@@ -49,13 +49,13 @@ type User struct {
 // Reseller is a sub-admin with capped volume/expiry/speed.
 // Zero TotalGB/ExpiryTime/SpeedLimitMbps means unlimited.
 type Reseller struct {
-	Id             int    `json:"id" gorm:"primaryKey;autoIncrement"`
-	Username       string `json:"username" gorm:"uniqueIndex;not null"`
+	Id             int    `json:"id" gorm:"primaryKey;autoIncrement" example:"1"`
+	Username       string `json:"username" gorm:"uniqueIndex;not null" example:"shop1"`
 	Password       string `json:"password"`
-	TotalGB        int64  `json:"totalGB" gorm:"column:total_gb;default:0"`
-	ExpiryTime     int64  `json:"expiryTime" gorm:"column:expiry_time;default:0"`
-	SpeedLimitMbps int    `json:"speedLimitMbps" gorm:"column:speed_limit_mbps;default:0"`
-	Enable         bool   `json:"enable" gorm:"default:true"`
+	TotalGB        int64  `json:"totalGB" gorm:"column:total_gb;default:0" example:"500"`
+	ExpiryTime     int64  `json:"expiryTime" gorm:"column:expiry_time;default:0" example:"0"`
+	SpeedLimitMbps int    `json:"speedLimitMbps" gorm:"column:speed_limit_mbps;default:0" example:"4"`
+	Enable         bool   `json:"enable" gorm:"default:true" example:"true"`
 	LoginEpoch     int64  `json:"-" gorm:"default:0"`
 	CreatedAt      int64  `json:"createdAt" gorm:"autoCreateTime:milli"`
 	UpdatedAt      int64  `json:"updatedAt" gorm:"autoUpdateTime:milli"`

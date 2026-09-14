@@ -1484,6 +1484,9 @@ export const SCHEMAS: Record<string, unknown> = {
       "publicKey": {
         "type": "string"
       },
+      "resellerId": {
+        "type": "integer"
+      },
       "reset": {
         "description": "Reset period in days",
         "type": "integer"
@@ -1512,6 +1515,9 @@ export const SCHEMAS: Record<string, unknown> = {
       "security": {
         "description": "Security method (e.g., \"auto\", \"aes-128-gcm\")",
         "type": "string"
+      },
+      "speedLimitMbps": {
+        "type": "integer"
       },
       "subId": {
         "description": "Subscription identifier",
@@ -1555,10 +1561,12 @@ export const SCHEMAS: Record<string, unknown> = {
       "enable",
       "expiryTime",
       "limitIp",
+      "resellerId",
       "reset",
       "resetDay",
       "resetMax",
       "security",
+      "speedLimitMbps",
       "subId",
       "tgId",
       "totalGB"
@@ -1700,6 +1708,9 @@ export const SCHEMAS: Record<string, unknown> = {
       "publicKey": {
         "type": "string"
       },
+      "resellerId": {
+        "type": "integer"
+      },
       "reset": {
         "type": "integer"
       },
@@ -1715,6 +1726,9 @@ export const SCHEMAS: Record<string, unknown> = {
       },
       "security": {
         "type": "string"
+      },
+      "speedLimitMbps": {
+        "type": "integer"
       },
       "subId": {
         "type": "string"
@@ -1761,12 +1775,14 @@ export const SCHEMAS: Record<string, unknown> = {
       "preSharedKey",
       "privateKey",
       "publicKey",
+      "resellerId",
       "reset",
       "resetDay",
       "resetMax",
       "reverse",
       "secret",
       "security",
+      "speedLimitMbps",
       "subId",
       "tgId",
       "totalGB",
@@ -2715,7 +2731,9 @@ export const SCHEMAS: Record<string, unknown> = {
           "tun",
           "mtproto",
           "amneziawg",
-          "tuic"
+          "tuic",
+          "openvpn",
+          "cisco"
         ],
         "example": "vless",
         "type": "string"
@@ -2738,6 +2756,10 @@ export const SCHEMAS: Record<string, unknown> = {
         "type": "string"
       },
       "sniffing": {},
+      "speedLimitMbps": {
+        "description": "Per-inbound default cap in Mbps, 0 = unlimited.",
+        "type": "integer"
+      },
       "streamSettings": {},
       "subSortIndex": {
         "description": "Sort order of this inbound's links in subscription output only (lower first; negatives allowed; 0/omitted → 1; ties by id)",
@@ -2793,6 +2815,7 @@ export const SCHEMAS: Record<string, unknown> = {
       "shareAddr",
       "shareAddrStrategy",
       "sniffing",
+      "speedLimitMbps",
       "streamSettings",
       "subSortIndex",
       "tag",
@@ -3926,6 +3949,60 @@ export const SCHEMAS: Record<string, unknown> = {
       "tls13",
       "tlsVersion",
       "x25519"
+    ],
+    "type": "object"
+  },
+  "Reseller": {
+    "description": "Reseller is a sub-admin with capped volume/expiry/speed.\nZero TotalGB/ExpiryTime/SpeedLimitMbps means unlimited.",
+    "properties": {
+      "createdAt": {
+        "format": "int64",
+        "type": "integer"
+      },
+      "enable": {
+        "example": true,
+        "type": "boolean"
+      },
+      "expiryTime": {
+        "example": 0,
+        "format": "int64",
+        "type": "integer"
+      },
+      "id": {
+        "example": 1,
+        "type": "integer"
+      },
+      "password": {
+        "type": "string"
+      },
+      "speedLimitMbps": {
+        "example": 4,
+        "type": "integer"
+      },
+      "totalGB": {
+        "example": 500,
+        "format": "int64",
+        "type": "integer"
+      },
+      "updatedAt": {
+        "format": "int64",
+        "type": "integer"
+      },
+      "username": {
+        "example": "shop1",
+        "type": "string"
+      }
+    },
+    "required": [
+      "createdAt",
+      "enable",
+      "expiryTime",
+      "id",
+      "password",
+      "speedLimitMbps",
+      "totalGB",
+      "updatedAt",
+      "username"
     ],
     "type": "object"
   },

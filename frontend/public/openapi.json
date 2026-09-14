@@ -1510,6 +1510,9 @@
           "publicKey": {
             "type": "string"
           },
+          "resellerId": {
+            "type": "integer"
+          },
           "reset": {
             "description": "Reset period in days",
             "type": "integer"
@@ -1538,6 +1541,9 @@
           "security": {
             "description": "Security method (e.g., \"auto\", \"aes-128-gcm\")",
             "type": "string"
+          },
+          "speedLimitMbps": {
+            "type": "integer"
           },
           "subId": {
             "description": "Subscription identifier",
@@ -1581,10 +1587,12 @@
           "enable",
           "expiryTime",
           "limitIp",
+          "resellerId",
           "reset",
           "resetDay",
           "resetMax",
           "security",
+          "speedLimitMbps",
           "subId",
           "tgId",
           "totalGB"
@@ -1726,6 +1734,9 @@
           "publicKey": {
             "type": "string"
           },
+          "resellerId": {
+            "type": "integer"
+          },
           "reset": {
             "type": "integer"
           },
@@ -1741,6 +1752,9 @@
           },
           "security": {
             "type": "string"
+          },
+          "speedLimitMbps": {
+            "type": "integer"
           },
           "subId": {
             "type": "string"
@@ -1787,12 +1801,14 @@
           "preSharedKey",
           "privateKey",
           "publicKey",
+          "resellerId",
           "reset",
           "resetDay",
           "resetMax",
           "reverse",
           "secret",
           "security",
+          "speedLimitMbps",
           "subId",
           "tgId",
           "totalGB",
@@ -2741,7 +2757,9 @@
               "tun",
               "mtproto",
               "amneziawg",
-              "tuic"
+              "tuic",
+              "openvpn",
+              "cisco"
             ],
             "example": "vless",
             "type": "string"
@@ -2764,6 +2782,10 @@
             "type": "string"
           },
           "sniffing": {},
+          "speedLimitMbps": {
+            "description": "Per-inbound default cap in Mbps, 0 = unlimited.",
+            "type": "integer"
+          },
           "streamSettings": {},
           "subSortIndex": {
             "description": "Sort order of this inbound's links in subscription output only (lower first; negatives allowed; 0/omitted → 1; ties by id)",
@@ -2819,6 +2841,7 @@
           "shareAddr",
           "shareAddrStrategy",
           "sniffing",
+          "speedLimitMbps",
           "streamSettings",
           "subSortIndex",
           "tag",
@@ -3955,6 +3978,60 @@
         ],
         "type": "object"
       },
+      "Reseller": {
+        "description": "Reseller is a sub-admin with capped volume/expiry/speed.\nZero TotalGB/ExpiryTime/SpeedLimitMbps means unlimited.",
+        "properties": {
+          "createdAt": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "enable": {
+            "example": true,
+            "type": "boolean"
+          },
+          "expiryTime": {
+            "example": 0,
+            "format": "int64",
+            "type": "integer"
+          },
+          "id": {
+            "example": 1,
+            "type": "integer"
+          },
+          "password": {
+            "type": "string"
+          },
+          "speedLimitMbps": {
+            "example": 4,
+            "type": "integer"
+          },
+          "totalGB": {
+            "example": 500,
+            "format": "int64",
+            "type": "integer"
+          },
+          "updatedAt": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "username": {
+            "example": "shop1",
+            "type": "string"
+          }
+        },
+        "required": [
+          "createdAt",
+          "enable",
+          "expiryTime",
+          "id",
+          "password",
+          "speedLimitMbps",
+          "totalGB",
+          "updatedAt",
+          "username"
+        ],
+        "type": "object"
+      },
       "ServerSettings": {
         "description": "ServerSettings is the \"server\" block of an AmneziaWG inbound's Settings\nJSON: the interface-level configuration shared by every client/peer. The\nlisten port is deliberately not duplicated here — it lives on the inbound\nrow itself (Inbound.Port), like every other protocol.",
         "properties": {
@@ -4378,6 +4455,10 @@
       "description": "Manage clients as first-class entities that can be attached to one or more inbounds. A single client row drives the settings.clients entry in every inbound it belongs to. Endpoints live under /panel/api/clients."
     },
     {
+      "name": "Resellers",
+      "description": "Sub-admin accounts with capped volume/expiry/speed. Zero means unlimited. All endpoints under /panel/api/resellers."
+    },
+    {
       "name": "Nodes",
       "description": "Manage remote 3x-ui panels acting as nodes for a central panel. All endpoints under /panel/api/nodes."
     },
@@ -4675,6 +4756,7 @@
                       "shareAddr": "",
                       "shareAddrStrategy": "node",
                       "sniffing": null,
+                      "speedLimitMbps": 0,
                       "streamSettings": null,
                       "subSortIndex": 1,
                       "tag": "in-443-tcp",
@@ -10293,6 +10375,392 @@
         }
       }
     },
+    "/panel/api/resellers/list": {
+      "get": {
+        "tags": [
+          "Resellers"
+        ],
+        "summary": "List all resellers (passwords omitted).",
+        "operationId": "get_panel_api_resellers_list",
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "msg": {
+                      "type": "string"
+                    },
+                    "obj": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Reseller"
+                      }
+                    }
+                  }
+                },
+                "example": {
+                  "success": true,
+                  "obj": [
+                    {
+                      "createdAt": 0,
+                      "enable": true,
+                      "expiryTime": 0,
+                      "id": 1,
+                      "password": "",
+                      "speedLimitMbps": 4,
+                      "totalGB": 500,
+                      "updatedAt": 0,
+                      "username": "shop1"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/panel/api/resellers/add": {
+      "post": {
+        "tags": [
+          "Resellers"
+        ],
+        "summary": "Create a reseller with volume (GB), expiry and speed (Mbps) caps.",
+        "operationId": "post_panel_api_resellers_add",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              },
+              "example": {
+                "username": "shop1",
+                "password": "secret",
+                "totalGB": 500,
+                "expiryTime": 0,
+                "speedLimitMbps": 4
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "msg": {
+                      "type": "string"
+                    },
+                    "obj": {
+                      "$ref": "#/components/schemas/Reseller"
+                    }
+                  }
+                },
+                "example": {
+                  "success": true,
+                  "obj": {
+                    "createdAt": 0,
+                    "enable": true,
+                    "expiryTime": 0,
+                    "id": 1,
+                    "password": "",
+                    "speedLimitMbps": 4,
+                    "totalGB": 500,
+                    "updatedAt": 0,
+                    "username": "shop1"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/panel/api/resellers/update/{id}": {
+      "post": {
+        "tags": [
+          "Resellers"
+        ],
+        "summary": "Update reseller caps. Raising the cap does not auto-start stopped accounts.",
+        "operationId": "post_panel_api_resellers_update_id",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "Reseller ID.",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              },
+              "example": {
+                "totalGB": 1000,
+                "expiryTime": 0,
+                "speedLimitMbps": 4
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "msg": {
+                      "type": "string"
+                    },
+                    "obj": {
+                      "$ref": "#/components/schemas/Reseller"
+                    }
+                  }
+                },
+                "example": {
+                  "success": true,
+                  "obj": {
+                    "createdAt": 0,
+                    "enable": true,
+                    "expiryTime": 0,
+                    "id": 1,
+                    "password": "",
+                    "speedLimitMbps": 4,
+                    "totalGB": 500,
+                    "updatedAt": 0,
+                    "username": "shop1"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/panel/api/resellers/del/{id}": {
+      "post": {
+        "tags": [
+          "Resellers"
+        ],
+        "summary": "Delete a reseller. Owned clients are kept.",
+        "operationId": "post_panel_api_resellers_del_id",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "Reseller ID.",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "msg": {
+                      "type": "string"
+                    },
+                    "obj": {}
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/panel/api/resellers/usage/{id}": {
+      "get": {
+        "tags": [
+          "Resellers"
+        ],
+        "summary": "Summed used bytes across all clients owned by the reseller.",
+        "operationId": "get_panel_api_resellers_usage_id",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "Reseller ID.",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "msg": {
+                      "type": "string"
+                    },
+                    "obj": {}
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/panel/api/resellers/login": {
+      "post": {
+        "tags": [
+          "Resellers"
+        ],
+        "summary": "Reseller login with its own username/password.",
+        "operationId": "post_panel_api_resellers_login",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              },
+              "example": {
+                "username": "shop1",
+                "password": "secret"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "msg": {
+                      "type": "string"
+                    },
+                    "obj": {}
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/panel/api/resellers/myClients": {
+      "get": {
+        "tags": [
+          "Resellers"
+        ],
+        "summary": "List clients owned by the logged-in reseller.",
+        "operationId": "get_panel_api_resellers_myClients",
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "msg": {
+                      "type": "string"
+                    },
+                    "obj": {}
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/panel/api/resellers/myClients/setEnable": {
+      "post": {
+        "tags": [
+          "Resellers"
+        ],
+        "summary": "Reseller stops/starts one of its own clients. Blocked while its quota/expiry is exhausted.",
+        "operationId": "post_panel_api_resellers_myClients_setEnable",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              },
+              "example": {
+                "email": "user1",
+                "enable": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "msg": {
+                      "type": "string"
+                    },
+                    "obj": {}
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/panel/api/nodes/list": {
       "get": {
         "tags": [
@@ -15655,6 +16123,7 @@
                   "shareAddr": "",
                   "shareAddrStrategy": "node",
                   "sniffing": null,
+                  "speedLimitMbps": 0,
                   "streamSettings": null,
                   "subSortIndex": 1,
                   "tag": "in-443-tcp",

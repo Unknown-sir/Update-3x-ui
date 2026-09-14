@@ -359,12 +359,14 @@ export interface Client {
   preSharedKey?: string;
   privateKey?: string;
   publicKey?: string;
+  resellerId: number;
   reset: number;
   resetDay: number;
   resetMax: number;
   reverse?: ClientReverse | null;
   secret?: string;
   security: string;
+  speedLimitMbps: number;
   subId: string;
   tgId: number;
   totalGB: number;
@@ -410,12 +412,14 @@ export interface ClientRecord {
   preSharedKey: string;
   privateKey: string;
   publicKey: string;
+  resellerId: number;
   reset: number;
   resetDay: number;
   resetMax: number;
   reverse: unknown;
   secret: string;
   security: string;
+  speedLimitMbps: number;
   subId: string;
   tgId: number;
   totalGB: number;
@@ -629,6 +633,7 @@ export interface Inbound {
   shareAddr: string;
   shareAddrStrategy: string;
   sniffing: unknown;
+  speedLimitMbps: number;
   streamSettings: unknown;
   subSortIndex: number;
   tag: string;
@@ -887,6 +892,18 @@ export interface RealityScanResult {
   tls13: boolean;
   tlsVersion: string;
   x25519: boolean;
+}
+
+export interface Reseller {
+  createdAt: number;
+  enable: boolean;
+  expiryTime: number;
+  id: number;
+  password: string;
+  speedLimitMbps: number;
+  totalGB: number;
+  updatedAt: number;
+  username: string;
 }
 
 export interface ServerSettings {
