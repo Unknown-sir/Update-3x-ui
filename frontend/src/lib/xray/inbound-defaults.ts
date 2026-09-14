@@ -2,7 +2,9 @@ import { RandomUtil, Wireguard } from '@/utils';
 import { generateAwgObfuscation } from '@/lib/xray/amneziawg-obfuscation';
 
 import type { AmneziawgInboundSettings } from '@/schemas/protocols/inbound/amneziawg';
+import type { CiscoInboundSettings } from '@/schemas/protocols/inbound/cisco';
 import type { HttpInboundSettings } from '@/schemas/protocols/inbound/http';
+import type { OpenvpnInboundSettings } from '@/schemas/protocols/inbound/openvpn';
 import type { HysteriaClient, HysteriaInboundSettings } from '@/schemas/protocols/inbound/hysteria';
 import type { MixedInboundSettings } from '@/schemas/protocols/inbound/mixed';
 import type { MtprotoClient, MtprotoInboundSettings } from '@/schemas/protocols/inbound/mtproto';
@@ -338,6 +340,28 @@ export function createDefaultAmneziawgInboundSettings(): AmneziawgInboundSetting
   };
 }
 
+export function createDefaultOpenvpnInboundSettings(): OpenvpnInboundSettings {
+  return {
+    proto: 'udp',
+    subnet: '10.8.0.0',
+    netmask: '255.255.255.0',
+    cipher: 'AES-256-GCM',
+    auth: 'SHA256',
+    speedLimitMbps: 0,
+    clients: [],
+  };
+}
+
+export function createDefaultCiscoInboundSettings(): CiscoInboundSettings {
+  return {
+    auth: 'plain',
+    subnet: '10.9.0.0/24',
+    dns: ['8.8.8.8'],
+    speedLimitMbps: 0,
+    clients: [],
+  };
+}
+
 export function createDefaultTuicInboundSettings(): TuicInboundSettings {
   return {
     server: {
@@ -375,7 +399,9 @@ export type AnyInboundSettings =
   | WireguardInboundSettings
   | MtprotoInboundSettings
   | AmneziawgInboundSettings
-  | TuicInboundSettings;
+  | TuicInboundSettings
+  | OpenvpnInboundSettings
+  | CiscoInboundSettings;
 
 export function createDefaultInboundSettings(protocol: string): AnyInboundSettings | null {
   switch (protocol) {
@@ -405,6 +431,10 @@ export function createDefaultInboundSettings(protocol: string): AnyInboundSettin
       return createDefaultAmneziawgInboundSettings();
     case 'tuic':
       return createDefaultTuicInboundSettings();
+    case 'openvpn':
+      return createDefaultOpenvpnInboundSettings();
+    case 'cisco':
+      return createDefaultCiscoInboundSettings();
     default:
       return null;
   }

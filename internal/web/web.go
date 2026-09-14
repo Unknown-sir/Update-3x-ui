@@ -349,6 +349,9 @@ func (s *Server) startTask(restartXray bool, loc *time.Location) {
 	_, _ = s.cron.AddJob(cadenceTuic, tuicJob)
 	go tuicJob.Run()
 
+	// Reseller volume/expiry enforcement every minute.
+	_, _ = s.cron.AddJob("@every 1m", job.NewResellerLimitJob())
+
 	// check client ips from log file every 10 sec
 	_, _ = s.cron.AddJob(cadenceClientIPScan, job.NewCheckClientIpJob())
 

@@ -34,6 +34,8 @@ const (
 	MTProto     Protocol = "mtproto"
 	AmneziaWG   Protocol = "amneziawg"
 	TUIC        Protocol = "tuic"
+	OpenVPN     Protocol = "openvpn"
+	Cisco       Protocol = "cisco"
 )
 
 // User represents a user account in the 3x-ui panel.
@@ -42,6 +44,37 @@ type User struct {
 	Username   string `json:"username"`
 	Password   string `json:"password"`
 	LoginEpoch int64  `json:"-" gorm:"default:0"`
+}
+
+// Reseller is a sub-admin with capped volume/expiry/speed.
+// Zero TotalGB/ExpiryTime/SpeedLimitMbps means unlimited.
+type Reseller struct {
+	Id             int    `json:"id" gorm:"primaryKey;autoIncrement"`
+	Username       string `json:"username" gorm:"uniqueIndex;not null"`
+	Password       string `json:"password"`
+	TotalGB        int64  `json:"totalGB" gorm:"column:total_gb;default:0"`
+	ExpiryTime     int64  `json:"expiryTime" gorm:"column:expiry_time;default:0"`
+	SpeedLimitMbps int    `json:"speedLimitMbps" gorm:"column:speed_limit_mbps;default:0"`
+	Enable         bool   `json:"enable" gorm:"default:true"`
+	LoginEpoch     int64  `json:"-" gorm:"default:0"`
+	CreatedAt      int64  `json:"createdAt" gorm:"autoCreateTime:milli"`
+	UpdatedAt      int64  `json:"updatedAt" gorm:"autoUpdateTime:milli"`
+}
+
+func (Reseller) TableName() string { return "resellers" }
+
+// Reseller exhausted/expired check shared by jobs and guards.
+func (r *Reseller) IsExhausted(usedBytes int64, now int64) bool {
+	if r == nil || !r.Enable {
+		return true
+	}
+	if r.TotalGB > 0 && usedBytes >= r.TotalGB*1024*1024*1024 {
+		return true
+	}
+	if r.ExpiryTime > 0 && now >= r.ExpiryTime {
+		return true
+	}
+	return false
 }
 
 // Inbound represents an Xray inbound configuration with traffic statistics and settings.
@@ -63,7 +96,7 @@ type Inbound struct {
 	// Xray configuration fields
 	Listen            string   `json:"listen" form:"listen"`
 	Port              int      `json:"port" form:"port" validate:"gte=0,lte=65535" example:"443"`
-	Protocol          Protocol `json:"protocol" form:"protocol" validate:"required,oneof=vmess vless trojan shadowsocks wireguard hysteria http mixed tunnel tun mtproto amneziawg tuic" example:"vless"`
+	Protocol          Protocol `json:"protocol" form:"protocol" validate:"required,oneof=vmess vless trojan shadowsocks wireguard hysteria http mixed tunnel tun mtproto amneziawg tuic openvpn cisco" example:"vless"`
 	Settings          string   `json:"settings" form:"settings"`
 	StreamSettings    string   `json:"streamSettings" form:"streamSettings"`
 	Tag               string   `json:"tag" form:"tag" gorm:"unique" example:"in-443-tcp"`
@@ -73,6 +106,9 @@ type Inbound struct {
 	ShareAddr         string   `json:"shareAddr" form:"shareAddr" gorm:"column:share_addr"`
 
 	DisableFlow bool `json:"disableFlow" form:"disableFlow" gorm:"column:disable_flow;default:false" example:"false"`
+
+	// Per-inbound default cap in Mbps, 0 = unlimited.
+	SpeedLimitMbps int `json:"speedLimitMbps" form:"speedLimitMbps" gorm:"column:speed_limit_mbps;default:0"`
 
 	// OriginNodeGuid is the panelGuid of the node that physically hosts this
 	// inbound, propagated up across hops (#4983). Empty for an inbound that
@@ -899,6 +935,8 @@ type Client struct {
 	LimitIP             int              `json:"limitIp"`                      // IP limit for this client
 	TotalGB             int64            `json:"totalGB" form:"totalGB"`       // Total traffic limit in GB
 	ExpiryTime          int64            `json:"expiryTime" form:"expiryTime"` // Expiration timestamp
+	SpeedLimitMbps      int              `json:"speedLimitMbps" form:"speedLimitMbps"`
+	ResellerId          int              `json:"resellerId" form:"resellerId"`
 	Enable              bool             `json:"enable" form:"enable"`         // Whether the client is enabled
 	TgID                int64            `json:"tgId" form:"tgId"`             // Telegram user ID for notifications
 	SubID               string           `json:"subId" form:"subId"`           // Subscription identifier
@@ -936,6 +974,8 @@ type ClientRecord struct {
 	LimitHwid       int    `json:"limitHwid" gorm:"column:limit_hwid;default:0"`
 	TotalGB         int64  `json:"totalGB" gorm:"column:total_gb"`
 	ExpiryTime      int64  `json:"expiryTime" gorm:"column:expiry_time"`
+	SpeedLimitMbps  int    `json:"speedLimitMbps" gorm:"column:speed_limit_mbps;default:0"`
+	ResellerId      int    `json:"resellerId" gorm:"column:reseller_id;default:0;index:idx_clients_reseller"`
 	Enable          bool   `json:"enable" gorm:"default:true"`
 	TgID            int64  `json:"tgId" gorm:"column:tg_id;index:idx_clients_tg_id"`
 	Group           string `json:"group" gorm:"column:group_name;default:'';index:idx_client_record_group"`

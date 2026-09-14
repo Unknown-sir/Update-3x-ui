@@ -65,6 +65,7 @@ const (
 func allModels() []any {
 	return []any{
 		&model.User{},
+		&model.Reseller{},
 		&model.Inbound{},
 		&model.OutboundTraffics{},
 		&model.Setting{},
@@ -104,11 +105,36 @@ func migrateOutboundSubscriptionUserAgentColumn() error {
 	return migrator.AddColumn(&model.OutboundSubscription{}, "UserAgent")
 }
 
+func migrateSpeedLimitResellerColumns() error {
+	migrator := db.Migrator()
+	if migrator.HasTable(&model.Inbound{}) && !migrator.HasColumn(&model.Inbound{}, "speed_limit_mbps") {
+		if err := migrator.AddColumn(&model.Inbound{}, "SpeedLimitMbps"); err != nil {
+			return err
+		}
+	}
+	if migrator.HasTable(&model.ClientRecord{}) {
+		if !migrator.HasColumn(&model.ClientRecord{}, "speed_limit_mbps") {
+			if err := migrator.AddColumn(&model.ClientRecord{}, "SpeedLimitMbps"); err != nil {
+				return err
+			}
+		}
+		if !migrator.HasColumn(&model.ClientRecord{}, "reseller_id") {
+			if err := migrator.AddColumn(&model.ClientRecord{}, "ResellerId"); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
 func initModels() error {
 	if err := migrateClientTrafficLastSubFetchColumn(); err != nil {
 		return err
 	}
 	if err := migrateOutboundSubscriptionUserAgentColumn(); err != nil {
+		return err
+	}
+	if err := migrateSpeedLimitResellerColumns(); err != nil {
 		return err
 	}
 	models := allModels()

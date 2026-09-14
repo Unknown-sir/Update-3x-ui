@@ -25,6 +25,7 @@ func run(root, outDir string) error {
 			Path: resolveRel(root, "internal/database/model"),
 			StructAllow: setOf(
 				"User",
+				"Reseller",
 				"Inbound",
 				"FallbackParentInfo",
 				"OutboundTraffics",

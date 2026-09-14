@@ -26,13 +26,14 @@ Built as an enhanced fork of the original X-UI project, 3X-UI adds broader proto
 
 ## Features
 
-- **Multi-protocol inbounds** — VLESS, VMess, Trojan, Shadowsocks, WireGuard, AmneziaWG, TUIC v5, Hysteria2, MTProto, HTTP, SOCKS (Mixed), Dokodemo-door / Tunnel, and TUN.
+- **Multi-protocol inbounds** — VLESS, VMess, Trojan, Shadowsocks, WireGuard, AmneziaWG, TUIC v5, Hysteria2, MTProto, OpenVPN, Cisco AnyConnect (ocserv), HTTP, SOCKS (Mixed), Dokodemo-door / Tunnel, and TUN.
 - **Modern transports & security** — TCP (Raw), mKCP, WebSocket, gRPC, HTTPUpgrade, and XHTTP, secured with TLS, XTLS, and REALITY.
 - **AmneziaWG built in** — DPI-resistant WireGuard runs inside the panel on a userspace network stack, with no kernel module, DKMS, or extra packages to install.
 - **TUIC v5 sidecar** — High-performance QUIC-based proxy with native UDP relay traffic metering, 0-RTT handshakes, and BBR congestion control.
 - **MTProto proxies** — per-client FakeTLS secrets, ad-tags, and quotas, applied live without dropping existing connections.
 - **Fallbacks** — serve multiple protocols on a single port (e.g. VLESS and Trojan on 443) using Xray's fallback support.
-- **Per-client management** — traffic quotas, expiry dates, IP limits with trusted-address exemptions, HWID device limits, scheduled renewal cycles, live online status, and one-click share links, QR codes, and subscriptions.
+- **Per-client management** — traffic quotas, expiry dates, per-user speed limits (Mbps, 0 = unlimited), IP limits with trusted-address exemptions, HWID device limits, scheduled renewal cycles, live online status, and one-click share links, QR codes, and subscriptions.
+- **Reseller system** — admin creates resellers with volume (GB), expiry and speed (Mbps) caps (0 = unlimited). When a reseller hits its volume or date limit, all of its accounts are stopped automatically; a reseller can log in, see and edit only its own users, but cannot re-enable them until the admin raises the cap.
 - **Traffic statistics** — per inbound, per client, and per outbound, with reset controls.
 - **Multi-node support** — manage and scale across multiple servers from a single panel, including cloning inbounds onto other nodes.
 - **Outbound & routing** — WARP, NordVPN, PIA, custom routing rules, load balancers with balancer-to-balancer fallback, and outbound proxy chaining. Bundled geosite and geoip categories are browsable straight from the rule editor.
@@ -74,20 +75,23 @@ Built as an enhanced fork of the original X-UI project, 3X-UI adds broader proto
 ## Quick Start
 
 ```bash
-bash <(curl -Ls https://raw.githubusercontent.com/mhsanaei/3x-ui/master/install.sh)
+bash <(curl -Ls https://raw.githubusercontent.com/Unknown-sir/Update-3x-ui/main/install.sh)
 ```
 
 To install a specific version, append its tag (e.g. `v3.7.0`):
 
 ```bash
-bash <(curl -Ls https://raw.githubusercontent.com/mhsanaei/3x-ui/master/install.sh) v3.7.0
+bash <(curl -Ls https://raw.githubusercontent.com/Unknown-sir/Update-3x-ui/main/install.sh) v3.7.0
 ```
 
 To install the rolling **dev** build (latest per-commit pre-release from `main`, not a stable release), pass `dev-latest`:
 
 ```bash
-bash <(curl -Ls https://raw.githubusercontent.com/mhsanaei/3x-ui/master/install.sh) dev-latest
+bash <(curl -Ls https://raw.githubusercontent.com/Unknown-sir/Update-3x-ui/main/install.sh) dev-latest
 ```
+
+> This fork installs `openvpn` and `ocserv` (Cisco AnyConnect) alongside the
+> standard prerequisites, so the OpenVPN / Cisco inbound types work out of the box.
 
 During installation a random username, password, and access path are generated. After installation, run `x-ui` to open the management menu, where you can start/stop the service, view or reset your login credentials, manage SSL certificates, and more.
 

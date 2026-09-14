@@ -1597,6 +1597,67 @@ export const sections: readonly Section[] = [
   },
 
   {
+    id: 'resellers',
+    title: 'Resellers',
+    description:
+      'Sub-admin accounts with capped volume/expiry/speed. Zero means unlimited. All endpoints under /panel/api/resellers.',
+    endpoints: [
+      {
+        method: 'GET',
+        path: '/panel/api/resellers/list',
+        summary: 'List all resellers (passwords omitted).',
+        responseSchema: 'Reseller',
+        responseSchemaArray: true,
+      },
+      {
+        method: 'POST',
+        path: '/panel/api/resellers/add',
+        summary: 'Create a reseller with volume (GB), expiry and speed (Mbps) caps.',
+        body: '{\n  "username": "shop1",\n  "password": "secret",\n  "totalGB": 500,\n  "expiryTime": 0,\n  "speedLimitMbps": 4\n}',
+        responseSchema: 'Reseller',
+      },
+      {
+        method: 'POST',
+        path: '/panel/api/resellers/update/:id',
+        summary: 'Update reseller caps. Raising the cap does not auto-start stopped accounts.',
+        params: [{ name: 'id', in: 'path', type: 'integer', desc: 'Reseller ID.' }],
+        body: '{\n  "totalGB": 1000,\n  "expiryTime": 0,\n  "speedLimitMbps": 4\n}',
+        responseSchema: 'Reseller',
+      },
+      {
+        method: 'POST',
+        path: '/panel/api/resellers/del/:id',
+        summary: 'Delete a reseller. Owned clients are kept.',
+        params: [{ name: 'id', in: 'path', type: 'integer', desc: 'Reseller ID.' }],
+      },
+      {
+        method: 'GET',
+        path: '/panel/api/resellers/usage/:id',
+        summary: 'Summed used bytes across all clients owned by the reseller.',
+        params: [{ name: 'id', in: 'path', type: 'integer', desc: 'Reseller ID.' }],
+      },
+      {
+        method: 'POST',
+        path: '/panel/api/resellers/login',
+        summary: 'Reseller login with its own username/password.',
+        body: '{\n  "username": "shop1",\n  "password": "secret"\n}',
+      },
+      {
+        method: 'GET',
+        path: '/panel/api/resellers/myClients',
+        summary: 'List clients owned by the logged-in reseller.',
+      },
+      {
+        method: 'POST',
+        path: '/panel/api/resellers/myClients/setEnable',
+        summary:
+          'Reseller stops/starts one of its own clients. Blocked while its quota/expiry is exhausted.',
+        body: '{\n  "email": "user1",\n  "enable": false\n}',
+      },
+    ],
+  },
+
+  {
     id: 'nodes',
     title: 'Nodes',
     description:

@@ -10,8 +10,10 @@ import (
 
 	"github.com/mhsanaei/3x-ui/v3/internal/amneziawg"
 	"github.com/mhsanaei/3x-ui/v3/internal/amneziawgnet"
+	"github.com/mhsanaei/3x-ui/v3/internal/cisco"
 	"github.com/mhsanaei/3x-ui/v3/internal/database/model"
 	"github.com/mhsanaei/3x-ui/v3/internal/mtproto"
+	"github.com/mhsanaei/3x-ui/v3/internal/openvpn"
 	"github.com/mhsanaei/3x-ui/v3/internal/tuic"
 	"github.com/mhsanaei/3x-ui/v3/internal/xray"
 )
@@ -92,6 +94,20 @@ func (l *Local) AddInbound(_ context.Context, ib *model.Inbound) error {
 		}
 		return tuic.GetManager().Ensure(inst)
 	}
+	if ib.Protocol == model.OpenVPN {
+		inst, ok := openvpn.InstanceFromInbound(ib)
+		if !ok {
+			return nil
+		}
+		return openvpn.GetManager().Ensure(inst)
+	}
+	if ib.Protocol == model.Cisco {
+		inst, ok := cisco.InstanceFromInbound(ib)
+		if !ok {
+			return nil
+		}
+		return cisco.GetManager().Ensure(inst)
+	}
 	body, err := json.MarshalIndent(ib.GenXrayInboundConfig(), "", "  ")
 	if err != nil {
 		return err
@@ -120,6 +136,14 @@ func (l *Local) DelInbound(_ context.Context, ib *model.Inbound) error {
 		tuic.GetManager().Remove(ib.Id)
 		return nil
 	}
+	if ib.Protocol == model.OpenVPN {
+		openvpn.GetManager().Remove(ib.Id)
+		return nil
+	}
+	if ib.Protocol == model.Cisco {
+		cisco.GetManager().Remove(ib.Id)
+		return nil
+	}
 	return l.withAPI(func(api *xray.XrayAPI) error {
 		return api.DelInbound(ib.Tag)
 	})
@@ -134,6 +158,12 @@ func (l *Local) UpdateInbound(ctx context.Context, oldIb, newIb *model.Inbound) 
 	}
 	if oldIb.Protocol == model.TUIC || newIb.Protocol == model.TUIC {
 		return l.updateTuicInbound(ctx, oldIb, newIb)
+	}
+	if oldIb.Protocol == model.OpenVPN || newIb.Protocol == model.OpenVPN {
+		return l.updateSidecarInbound(ctx, oldIb, newIb)
+	}
+	if oldIb.Protocol == model.Cisco || newIb.Protocol == model.Cisco {
+		return l.updateSidecarInbound(ctx, oldIb, newIb)
 	}
 	_ = l.DelInbound(ctx, oldIb)
 	if !newIb.Enable {
@@ -248,8 +278,18 @@ func (l *Local) updateTuicInbound(ctx context.Context, oldIb, newIb *model.Inbou
 	return tuic.GetManager().Ensure(inst)
 }
 
+// updateSidecarInbound handles OpenVPN/Cisco edits without live-update:
+// desired state is re-recorded so the reconcile job converges the daemon.
+func (l *Local) updateSidecarInbound(ctx context.Context, oldIb, newIb *model.Inbound) error {
+	_ = l.DelInbound(ctx, oldIb)
+	if !newIb.Enable {
+		return nil
+	}
+	return l.AddInbound(ctx, newIb)
+}
+
 func (l *Local) AddUser(_ context.Context, ib *model.Inbound, userMap map[string]any) error {
-	if ib.Protocol == model.MTProto || ib.Protocol == model.AmneziaWG || ib.Protocol == model.TUIC {
+	if ib.Protocol == model.MTProto || ib.Protocol == model.AmneziaWG || ib.Protocol == model.TUIC || ib.Protocol == model.OpenVPN || ib.Protocol == model.Cisco {
 		return nil
 	}
 	return l.withAPI(func(api *xray.XrayAPI) error {
@@ -258,7 +298,7 @@ func (l *Local) AddUser(_ context.Context, ib *model.Inbound, userMap map[string
 }
 
 func (l *Local) RemoveUser(_ context.Context, ib *model.Inbound, email string) error {
-	if ib.Protocol == model.MTProto || ib.Protocol == model.AmneziaWG || ib.Protocol == model.TUIC {
+	if ib.Protocol == model.MTProto || ib.Protocol == model.AmneziaWG || ib.Protocol == model.TUIC || ib.Protocol == model.OpenVPN || ib.Protocol == model.Cisco {
 		return nil
 	}
 	return l.withAPI(func(api *xray.XrayAPI) error {

@@ -1,7 +1,9 @@
 import { z } from 'zod';
 
 import { AmneziawgInboundSettingsSchema } from './amneziawg';
+import { CiscoInboundSettingsSchema } from './cisco';
 import { HttpInboundSettingsSchema } from './http';
+import { OpenvpnInboundSettingsSchema } from './openvpn';
 import { HysteriaInboundSettingsSchema } from './hysteria';
 import { MixedInboundSettingsSchema } from './mixed';
 import { MtprotoInboundSettingsSchema } from './mtproto';
@@ -15,7 +17,9 @@ import { VmessInboundSettingsSchema } from './vmess';
 import { WireguardInboundSettingsSchema } from './wireguard';
 
 export * from './amneziawg';
+export * from './cisco';
 export * from './http';
+export * from './openvpn';
 export * from './hysteria';
 export * from './mixed';
 export * from './mtproto';
@@ -47,5 +51,7 @@ export const InboundSettingsSchema = z.discriminatedUnion('protocol', [
   z.object({ protocol: z.literal('mtproto'), settings: MtprotoInboundSettingsSchema }),
   z.object({ protocol: z.literal('amneziawg'), settings: AmneziawgInboundSettingsSchema }),
   z.object({ protocol: z.literal('tuic'), settings: TuicInboundSettingsSchema }),
+  z.object({ protocol: z.literal('openvpn'), settings: OpenvpnInboundSettingsSchema }),
+  z.object({ protocol: z.literal('cisco'), settings: CiscoInboundSettingsSchema }),
 ]);
 export type InboundSettings = z.infer<typeof InboundSettingsSchema>;

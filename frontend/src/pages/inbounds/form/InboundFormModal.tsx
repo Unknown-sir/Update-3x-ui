@@ -58,10 +58,12 @@ import { AdvancedAllEditor, AdvancedSliceEditor } from './advanced-editors';
 import { formatInboundIssue, formatInboundValidation } from './formatValidationError';
 import {
   AmneziawgFields,
+  CiscoFields,
   HttpFields,
   HysteriaFields,
   MixedFields,
   MtprotoFields,
+  OpenvpnFields,
   ShadowsocksFields,
   TuicFields,
   TunFields,
@@ -801,6 +803,10 @@ export default function InboundFormModal({
 
       {protocol === Protocols.TUIC && <TuicFields />}
 
+      {protocol === Protocols.OPENVPN && <OpenvpnFields />}
+
+      {protocol === Protocols.CISCO && <CiscoFields />}
+
       {protocol === Protocols.TUN && <TunFields />}
 
       {protocol === Protocols.TUNNEL && <TunnelFields />}
@@ -1140,6 +1146,8 @@ export default function InboundFormModal({
                     Protocols.MTPROTO,
                     Protocols.AMNEZIAWG,
                     Protocols.TUIC,
+                    Protocols.OPENVPN,
+                    Protocols.CISCO,
                   ] as string[]
                 ).includes(protocol) || isFallbackHost
                   ? [

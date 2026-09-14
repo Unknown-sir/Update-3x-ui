@@ -159,6 +159,8 @@ const EMPTY: Values = {
   trafficResetDay: 1,
   limitIp: 0,
   limitHwid: 0,
+  speedLimitMbps: 0,
+  resellerId: 0,
   tgId: 0,
   group: '',
   comment: '',
@@ -370,6 +372,8 @@ export default function ClientFormModal({
         trafficResetDay: Number(client.trafficResetDay) || 1,
         limitIp: client.limitIp || 0,
         limitHwid: client.limitHwid || 0,
+        speedLimitMbps: Number(client.speedLimitMbps) || 0,
+        resellerId: Number(client.resellerId) || 0,
         tgId: Number(client.tgId) || 0,
         group: client.group || '',
         comment: client.comment || '',
@@ -700,6 +704,8 @@ export default function ClientFormModal({
       trafficResetDay: Number(values.trafficResetDay) || 1,
       limitIp: Number(values.limitIp) || 0,
       limitHwid: Number(values.limitHwid) || 0,
+      speedLimitMbps: Number(values.speedLimitMbps) || 0,
+      resellerId: Number(values.resellerId) || 0,
       tgId: Number(values.tgId) || 0,
       group: values.group,
       comment: values.comment,
@@ -947,6 +953,27 @@ export default function ClientFormModal({
                               )}
                             </Space.Compact>
                           </Form.Item>
+                        </Col>
+                      </Row>
+
+                      <Row gutter={16}>
+                        <Col xs={24} md={12}>
+                          <FormField
+                            name="speedLimitMbps"
+                            label="Speed limit (Mbps, 0 = unlimited)"
+                            transform={{ output: (v) => Number(v) || 0 }}
+                          >
+                            <InputNumber min={0} style={{ width: '100%' }} />
+                          </FormField>
+                        </Col>
+                        <Col xs={24} md={12}>
+                          <FormField
+                            name="resellerId"
+                            label="Reseller ID (0 = admin)"
+                            transform={{ output: (v) => Number(v) || 0 }}
+                          >
+                            <InputNumber min={0} style={{ width: '100%' }} />
+                          </FormField>
                         </Col>
                       </Row>
 
