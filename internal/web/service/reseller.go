@@ -28,7 +28,7 @@ func (s *ResellerService) Create(r *model.Reseller) (*model.Reseller, error) {
 	if r.Username == "" {
 		return nil, errors.New("username is required")
 	}
-	hash, err := crypto.HashPassword(r.Password, 5)
+	hash, err := crypto.HashPasswordAsBcrypt(r.Password)
 	if err != nil {
 		return nil, err
 	}
@@ -53,7 +53,7 @@ func (s *ResellerService) Update(id int, patch *model.Reseller, changePassword b
 	row.SpeedLimitMbps = patch.SpeedLimitMbps
 	row.Enable = patch.Enable
 	if changePassword && patch.Password != "" {
-		hash, err := crypto.HashPassword(patch.Password, 5)
+		hash, err := crypto.HashPasswordAsBcrypt(patch.Password)
 		if err != nil {
 			return nil, err
 		}

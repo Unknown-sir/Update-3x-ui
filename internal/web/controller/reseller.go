@@ -6,6 +6,7 @@ import (
 	"github.com/mhsanaei/3x-ui/v3/internal/database/model"
 	"github.com/mhsanaei/3x-ui/v3/internal/util/common"
 	"github.com/mhsanaei/3x-ui/v3/internal/web/service"
+	"github.com/mhsanaei/3x-ui/v3/internal/web/session"
 
 	"github.com/gin-gonic/gin"
 )
@@ -131,16 +132,16 @@ func (a *ResellerController) login(c *gin.Context) {
 		jsonMsg(c, I18nWeb(c, "somethingWentWrong"), err)
 		return
 	}
-	c.Set("reseller_id", row.Id)
-	c.Set("reseller_username", row.Username)
+	if err := session.SetResellerID(c, row.Id); err != nil {
+		jsonMsg(c, I18nWeb(c, "somethingWentWrong"), err)
+		return
+	}
 	jsonObj(c, gin.H{"id": row.Id, "username": row.Username}, nil)
 }
 
 func (a *ResellerController) resellerID(c *gin.Context) (int, bool) {
-	if v, ok := c.Get("reseller_id"); ok {
-		if id, ok2 := v.(int); ok2 && id > 0 {
-			return id, true
-		}
+	if id := session.GetResellerID(c); id > 0 {
+		return id, true
 	}
 	return 0, false
 }
@@ -175,13 +176,7 @@ func (a *ResellerController) mySetEnable(c *gin.Context) {
 		jsonMsg(c, I18nWeb(c, "somethingWentWrong"), err)
 		return
 	}
-	// Block edits while the reseller quota/expiry is exhausted.
-	rows, err := a.clientService.ListByReseller(id)
-	if err != nil {
-		jsonMsg(c, I18nWeb(c, "somethingWentWrong"), err)
-		return
-	}
-	_ = rows
+	// Blocked while the reseller quota/expiry is exhausted.
 	if err := a.clientService.ResellerSetClientEnabled(id, body.Email, body.Enable); err != nil {
 		jsonMsg(c, I18nWeb(c, "somethingWentWrong"), err)
 		return

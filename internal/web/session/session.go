@@ -17,6 +17,7 @@ const (
 	loginUserKey      = "LOGIN_USER"
 	loginEpochKey     = "LOGIN_EPOCH"
 	apiAuthUserKey    = "api_auth_user"
+	resellerIDKey     = "RESELLER_ID"
 	sessionCookieName = "3x-ui"
 )
 
@@ -108,6 +109,38 @@ func sessionEpochMatches(cookieVal any, userEpoch int64) bool {
 
 func IsLogin(c *gin.Context) bool {
 	return GetLoginUser(c) != nil
+}
+
+// SetResellerID persists the logged-in reseller across requests.
+func SetResellerID(c *gin.Context, id int) error {
+	s := sessions.Default(c)
+	s.Set(resellerIDKey, id)
+	return s.Save()
+}
+
+// GetResellerID returns the logged-in reseller id, or 0 when absent.
+func GetResellerID(c *gin.Context) int {
+	if v, ok := c.Get(resellerIDKey); ok {
+		if id, ok2 := v.(int); ok2 && id > 0 {
+			return id
+		}
+	}
+	s := sessions.Default(c)
+	switch v := s.Get(resellerIDKey).(type) {
+	case int:
+		if v > 0 {
+			return v
+		}
+	case int64:
+		if v > 0 {
+			return int(v)
+		}
+	case float64:
+		if id := int(v); v == float64(id) && id > 0 {
+			return id
+		}
+	}
+	return 0
 }
 
 func sessionUserID(obj any) (int, bool) {
