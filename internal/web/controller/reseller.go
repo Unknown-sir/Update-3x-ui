@@ -323,14 +323,14 @@ func (a *ResellerController) myUpdateClient(c *gin.Context) {
 		jsonMsg(c, I18nWeb(c, "somethingWentWrong"), err)
 		return
 	}
-	req.Client.ResellerId = id
-	clamped, err := a.resellerService.ClampSpeed(id, req.Client.SpeedLimitMbps)
+	req.ResellerId = id
+	clamped, err := a.resellerService.ClampSpeed(id, req.SpeedLimitMbps)
 	if err != nil {
 		jsonMsg(c, I18nWeb(c, "somethingWentWrong"), err)
 		return
 	}
-	req.Client.SpeedLimitMbps = clamped
-	if req.Client.Enable {
+	req.SpeedLimitMbps = clamped
+	if req.Enable {
 		if _, _, exhausted, err := a.resellerService.Status(id); err != nil || exhausted {
 			if err == nil {
 				err = common.NewError("reseller quota or expiry exhausted, ask admin to raise the cap")
