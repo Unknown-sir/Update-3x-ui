@@ -56,6 +56,31 @@ func TestVPNConfigsForSubID(t *testing.T) {
 	}
 }
 
+func TestVPNConfigsUseAssignedHosts(t *testing.T) {
+	initSubDB(t)
+	db := database.GetDB()
+	ib := seedVPNInbound(t, model.OpenVPN, `{"proto":"udp","clients":[{"email":"u@vpn","password":"s3cr3t","enable":true}]}`)
+	if err := db.Create(&model.Host{
+		InboundId: ib.Id,
+		Remark:    "edge",
+		Address:   "edge.example.com",
+		Port:      443,
+	}).Error; err != nil {
+		t.Fatalf("create host: %v", err)
+	}
+
+	got := NewSubService("").VPNConfigsForSubID("sub-vpn")
+	if len(got) != 1 {
+		t.Fatalf("configs = %d, want 1 host entry: %+v", len(got), got)
+	}
+	if got[0].Server != "edge.example.com" || got[0].Port != 443 {
+		t.Fatalf("host endpoint not honored: %+v", got[0])
+	}
+	if !strings.Contains(got[0].Config, "remote edge.example.com 443") {
+		t.Fatalf("ovpn config missing host remote:\n%s", got[0].Config)
+	}
+}
+
 func TestVPNConfigsForEmailCisco(t *testing.T) {
 	initSubDB(t)
 	seedVPNInbound(t, model.Cisco, `{"auth":"plain","clients":[{"email":"u@vpn","password":"s3cr3t","enable":true}]}`)

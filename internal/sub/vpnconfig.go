@@ -3,6 +3,7 @@ package sub
 import (
 	"encoding/json"
 	"fmt"
+	"maps"
 	"strings"
 
 	"github.com/mhsanaei/3x-ui/v3/internal/database"
@@ -44,16 +45,59 @@ func vpnClientEmailsForSubID(subId string) []string {
 	return emails
 }
 
-// collectVPNConfigs builds one entry per (inbound, client) pair carrying a
-// usable password. Server falls back through the inbound share-address chain.
+// vpnEndpoint is one reachable address of an inbound: either the inbound
+// itself or one of its assigned hosts.
+type vpnEndpoint struct {
+	server string
+	port   int
+	remark string
+}
+
+// vpnEndpoints fans out like the share-link path: one entry per assigned
+// host, falling back to the inbound's own address when it has no hosts.
+func (s *SubService) vpnEndpoints(ib *model.Inbound, client model.Client) []vpnEndpoint {
+	eps := s.hostEndpoints(ib, "raw")
+	if len(eps) == 0 {
+		server := s.resolveInboundAddress(ib)
+		if server == "" {
+			return nil
+		}
+		return []vpnEndpoint{{server: server, port: ib.Port, remark: s.genRemark(ib, client.Email, "", "")}}
+	}
+	out := make([]vpnEndpoint, 0, len(eps))
+	for _, ep := range eps {
+		cp := maps.Clone(ep)
+		s.renderHostRemark(ib, client, cp, "")
+		dest, _ := cp["dest"].(string)
+		if dest == "" {
+			continue
+		}
+		port := ib.Port
+		switch p := cp["port"].(type) {
+		case float64:
+			if int(p) > 0 {
+				port = int(p)
+			}
+		case int:
+			if p > 0 {
+				port = p
+			}
+		}
+		out = append(out, vpnEndpoint{
+			server: dest,
+			port:   port,
+			remark: s.endpointRemark(ib, client.Email, cp, ""),
+		})
+	}
+	return out
+}
+
+// collectVPNConfigs builds one entry per (endpoint, client) pair carrying a
+// usable password.
 func (s *SubService) collectVPNConfigs(inbounds []*model.Inbound, emails []string) []VPNClientConfig {
 	out := []VPNClientConfig{}
 	for _, ib := range inbounds {
 		if ib == nil {
-			continue
-		}
-		server := s.resolveInboundAddress(ib)
-		if server == "" {
 			continue
 		}
 		for _, email := range emails {
@@ -64,19 +108,21 @@ func (s *SubService) collectVPNConfigs(inbounds []*model.Inbound, emails []strin
 			if !ok || client.Password == "" {
 				continue
 			}
-			entry := VPNClientConfig{
-				Protocol: string(ib.Protocol),
-				Remark:   ib.Remark,
-				Server:   server,
-				Port:     ib.Port,
-				Email:    email,
-				Username: email,
-				Password: client.Password,
+			for _, ep := range s.vpnEndpoints(ib, client) {
+				entry := VPNClientConfig{
+					Protocol: string(ib.Protocol),
+					Remark:   ep.remark,
+					Server:   ep.server,
+					Port:     ep.port,
+					Email:    email,
+					Username: email,
+					Password: client.Password,
+				}
+				if ib.Protocol == model.OpenVPN {
+					entry.Config = buildOpenVPNConfig(ep.server, ep.port, ib.Settings, ep.remark)
+				}
+				out = append(out, entry)
 			}
-			if ib.Protocol == model.OpenVPN {
-				entry.Config = buildOpenVPNConfig(server, ib.Port, ib.Settings, ib.Remark)
-			}
-			out = append(out, entry)
 		}
 	}
 	return out
