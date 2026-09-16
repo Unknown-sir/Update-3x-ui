@@ -163,11 +163,18 @@ func (a *ResellerController) login(c *gin.Context) {
 		jsonMsg(c, I18nWeb(c, "somethingWentWrong"), err)
 		return
 	}
+	remoteIP := getRemoteIp(c)
+	if _, ok := defaultLoginLimiter.allow(remoteIP, body.Username); !ok {
+		jsonMsg(c, I18nWeb(c, "pages.login.toasts.wrongUsernameOrPassword"), common.NewError("too many failed attempts"))
+		return
+	}
 	row, err := a.resellerService.CheckLogin(body.Username, body.Password)
 	if err != nil {
+		defaultLoginLimiter.registerFailure(remoteIP, body.Username)
 		jsonMsg(c, I18nWeb(c, "somethingWentWrong"), err)
 		return
 	}
+	defaultLoginLimiter.registerSuccess(remoteIP, body.Username)
 	if err := session.SetResellerID(c, row.Id); err != nil {
 		jsonMsg(c, I18nWeb(c, "somethingWentWrong"), err)
 		return

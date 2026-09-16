@@ -12,7 +12,13 @@ import {
   Tag,
   message,
 } from 'antd';
-import { DeleteOutlined, EditOutlined, PlusOutlined } from '@ant-design/icons';
+import {
+  CopyOutlined,
+  DeleteOutlined,
+  EditOutlined,
+  LinkOutlined,
+  PlusOutlined,
+} from '@ant-design/icons';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { z } from 'zod';
 
@@ -37,6 +43,23 @@ const ResellerListSchema = z
 type Reseller = z.infer<typeof ResellerSchema>;
 
 const JSON_HEADERS = { headers: { 'Content-Type': 'application/json' } } as const;
+
+export function resellerLoginLink(username: string): string {
+  const raw = (window as unknown as { X_UI_BASE_PATH?: string }).X_UI_BASE_PATH || '/';
+  const base = raw.endsWith('/') ? raw : `${raw}/`;
+  return `${window.location.origin}${base}reseller/${encodeURIComponent(username)}`;
+}
+
+function copyText(value: string) {
+  if (navigator.clipboard) {
+    navigator.clipboard.writeText(value).then(
+      () => message.success('Copied'),
+      () => message.error(value),
+    );
+  } else {
+    message.info(value);
+  }
+}
 
 async function fetchResellers(): Promise<Reseller[]> {
   const msg = await HttpUtil.get('/panel/api/resellers/list', undefined, { silent: true });
@@ -64,10 +87,28 @@ export default function ResellersPage() {
       if (!msg?.success) throw new Error(msg?.msg || 'Save failed');
       return msg;
     },
-    onSuccess: () => {
+    onSuccess: (_, values) => {
+      const username = editing ? editing.username : String(values.username || '');
       message.success('Saved');
       setModalOpen(false);
       setEditing(null);
+      if (username) {
+        const link = resellerLoginLink(username);
+        Modal.success({
+          title: `Reseller ${username} saved`,
+          content: (
+            <Space direction="vertical">
+              <span>Dedicated login page:</span>
+              <a href={link} target="_blank" rel="noreferrer">
+                {link}
+              </a>
+              <Button icon={<CopyOutlined />} onClick={() => copyText(link)}>
+                Copy link
+              </Button>
+            </Space>
+          ),
+        });
+      }
       form.resetFields();
       invalidate();
     },
@@ -130,6 +171,25 @@ export default function ResellersPage() {
             title: 'Enabled',
             render: (_, r) =>
               r.enable === false ? <Tag color="red">Off</Tag> : <Tag color="green">On</Tag>,
+          },
+          {
+            title: 'Login page',
+            render: (_, r) => {
+              const link = resellerLoginLink(r.username);
+              return (
+                <Space>
+                  <a href={link} target="_blank" rel="noreferrer" title={link}>
+                    <LinkOutlined /> open
+                  </a>
+                  <Button
+                    size="small"
+                    icon={<CopyOutlined />}
+                    aria-label={`Copy login link for ${r.username}`}
+                    onClick={() => copyText(link)}
+                  />
+                </Space>
+              );
+            },
           },
           {
             title: 'Actions',

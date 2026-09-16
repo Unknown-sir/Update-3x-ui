@@ -25,6 +25,22 @@ function basePath(): string {
 function csrfToken(): string {
   return document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
 }
+// Username embedded in dedicated login URLs (/reseller/<username>).
+// Empty on the generic /reseller page, where it stays editable.
+function lockedUsername(): string {
+  const base = basePath();
+  let rest = window.location.pathname;
+  if (rest.startsWith(base)) rest = rest.slice(base.length);
+  const segs = rest.split('/').filter(Boolean);
+  if (segs.length >= 2 && segs[0] === 'reseller' && segs[1]) {
+    try {
+      return decodeURIComponent(segs[1]);
+    } catch {
+      return segs[1];
+    }
+  }
+  return '';
+}
 async function api<T>(method: string, path: string, body?: unknown): Promise<T> {
   const res = await fetch(`${basePath()}panel/api/${path}`, {
     method,
@@ -35,7 +51,10 @@ async function api<T>(method: string, path: string, body?: unknown): Promise<T> 
     },
     body: body === undefined ? undefined : JSON.stringify(body),
   });
-  if (res.status === 401 || res.status === 403 || res.status === 404) {
+  if (res.status === 404) {
+    throw new Error('old-server');
+  }
+  if (res.status === 401 || res.status === 403) {
     throw new Error('auth');
   }
   const msg = (await res.json()) as { success: boolean; msg?: string; obj?: T };
@@ -76,22 +95,35 @@ export default function ResellerPortal() {
     enabled: !clientsQuery.isError,
   });
   const authed = !clientsQuery.isError;
+  const serverOutdated =
+    clientsQuery.error instanceof Error && clientsQuery.error.message === 'old-server';
   const clients = Array.isArray(clientsQuery.data) ? clientsQuery.data : [];
   const inbounds = Array.isArray(inboundsQuery.data) ? inboundsQuery.data : [];
   const invalidate = () => {
     void queryClient.invalidateQueries({ queryKey: ['reseller'] });
   };
+  const dedicatedUser = lockedUsername();
   const loginMutation = useMutation({
-    mutationFn: (values: { username: string; password: string }) =>
-      api('POST', 'resellers/login', values),
+    mutationFn: (values: { username?: string; password: string }) =>
+      api('POST', 'resellers/login', {
+        username: dedicatedUser || values.username,
+        password: values.password,
+      }),
     onSuccess: () => {
       loginForm.resetFields();
       setLoggedOut(false);
       invalidate();
       message.success('Logged in');
     },
-    onError: (e: Error) =>
-      message.error(e.message === 'auth' ? 'Invalid username or password' : e.message),
+    onError: (e: Error) => {
+      if (e.message === 'old-server') {
+        message.error('Panel is outdated — update it to v3.9.1 or newer first');
+      } else if (e.message === 'auth') {
+        message.error('Invalid username or password');
+      } else {
+        message.error(e.message);
+      }
+    },
   });
   const saveMutation = useMutation({
     mutationFn: async (values: {
@@ -190,13 +222,23 @@ export default function ResellerPortal() {
       <div style={{ display: 'flex', justifyContent: 'center', paddingTop: 100 }}>
         {' '}
         <Card title="Reseller login" style={{ width: 360 }}>
-          {' '}
+          {serverOutdated && (
+            <p style={{ color: '#ff4d4f' }}>
+              Panel is outdated — update it to v3.9.1 or newer first.
+            </p>
+          )}{' '}
           <Form form={loginForm} layout="vertical" onFinish={(v) => loginMutation.mutate(v)}>
             {' '}
-            <Form.Item name="username" label="Username" rules={[{ required: true }]}>
-              {' '}
-              <Input autoComplete="username" />{' '}
-            </Form.Item>{' '}
+            {dedicatedUser ? (
+              <Form.Item label="Username">
+                <Tag style={{ fontSize: 15, padding: '4px 12px' }}>{dedicatedUser}</Tag>
+              </Form.Item>
+            ) : (
+              <Form.Item name="username" label="Username" rules={[{ required: true }]}>
+                {' '}
+                <Input autoComplete="username" />{' '}
+              </Form.Item>
+            )}{' '}
             <Form.Item name="password" label="Password" rules={[{ required: true }]}>
               {' '}
               <Input.Password autoComplete="current-password" />{' '}
