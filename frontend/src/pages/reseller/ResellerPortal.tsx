@@ -1,4 +1,4 @@
-﻿import { useState } from 'react';
+﻿import { useRef, useState } from 'react';
 import {
   Button,
   Card,
@@ -14,6 +14,7 @@ import {
   Table,
   Tag,
   message,
+  type InputRef,
 } from 'antd';
 import { DeleteOutlined, EditOutlined, LogoutOutlined, PlusOutlined } from '@ant-design/icons';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -82,6 +83,11 @@ export default function ResellerPortal() {
   const [loggedOut, setLoggedOut] = useState(false);
   const [form] = Form.useForm();
   const [loginForm] = Form.useForm();
+  // Refs read the live DOM value at submit time. Browser autofill fills the
+  // input without firing React change events, leaving the Form store empty
+  // while text is visibly present — the ref bypasses that desync.
+  const usernameRef = useRef<InputRef>(null);
+  const passwordRef = useRef<InputRef>(null);
   const clientsQuery = useQuery({
     queryKey: ['reseller', 'clients'],
     queryFn: () => api<PortalClient[]>('GET', 'resellers/myClients'),
@@ -104,11 +110,18 @@ export default function ResellerPortal() {
   };
   const dedicatedUser = lockedUsername();
   const loginMutation = useMutation({
-    mutationFn: (values: { username?: string; password: string }) =>
-      api('POST', 'resellers/login', {
-        username: dedicatedUser || values.username,
-        password: values.password,
-      }),
+    mutationFn: (values: { username?: string; password?: string }) => {
+      const username = (
+        dedicatedUser ||
+        values.username ||
+        usernameRef.current?.input?.value ||
+        ''
+      ).trim();
+      const password = values.password || passwordRef.current?.input?.value || '';
+      if (!username) throw new Error('Username is required');
+      if (!password) throw new Error('Password is required');
+      return api('POST', 'resellers/login', { username, password });
+    },
     onSuccess: () => {
       loginForm.resetFields();
       setLoggedOut(false);
@@ -234,14 +247,14 @@ export default function ResellerPortal() {
                 <Tag style={{ fontSize: 15, padding: '4px 12px' }}>{dedicatedUser}</Tag>
               </Form.Item>
             ) : (
-              <Form.Item name="username" label="Username" rules={[{ required: true }]}>
+              <Form.Item name="username" label="Username">
                 {' '}
-                <Input autoComplete="username" />{' '}
+                <Input ref={usernameRef} autoComplete="username" />{' '}
               </Form.Item>
             )}{' '}
-            <Form.Item name="password" label="Password" rules={[{ required: true }]}>
+            <Form.Item name="password" label="Password">
               {' '}
-              <Input.Password autoComplete="current-password" />{' '}
+              <Input.Password ref={passwordRef} autoComplete="current-password" />{' '}
             </Form.Item>{' '}
             <Button type="primary" htmlType="submit" block loading={loginMutation.isPending}>
               {' '}
