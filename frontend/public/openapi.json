@@ -10328,6 +10328,71 @@
         }
       }
     },
+    "/panel/api/clients/vpnConfigs/{email}": {
+      "get": {
+        "tags": [
+          "Clients"
+        ],
+        "summary": "OpenVPN .ovpn profiles and Cisco AnyConnect credentials for one client. Neither protocol has a share-link URI form, so the client dialog renders these instead of a link line. Optional ?host= overrides the address fallback.",
+        "operationId": "get_panel_api_clients_vpnConfigs_email",
+        "parameters": [
+          {
+            "name": "email",
+            "in": "path",
+            "required": true,
+            "description": "Client email (unique identifier).",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "host",
+            "in": "query",
+            "required": false,
+            "description": "Address fallback.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "msg": {
+                      "type": "string"
+                    },
+                    "obj": {}
+                  }
+                },
+                "example": {
+                  "success": true,
+                  "obj": [
+                    {
+                      "protocol": "openvpn",
+                      "remark": "OpenVPN-1194",
+                      "server": "vpn.example.com",
+                      "port": 1194,
+                      "email": "user1",
+                      "username": "user1",
+                      "password": "s3cr3t",
+                      "config": "client\ndev tun\n..."
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/panel/api/clients/links/{email}": {
       "get": {
         "tags": [

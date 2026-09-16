@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/mhsanaei/3x-ui/v3/internal/database/model"
+	"github.com/mhsanaei/3x-ui/v3/internal/sub"
 	"github.com/mhsanaei/3x-ui/v3/internal/web/entity"
 	"github.com/mhsanaei/3x-ui/v3/internal/web/service"
 	"github.com/mhsanaei/3x-ui/v3/internal/web/websocket"
@@ -57,6 +58,7 @@ func (a *ClientController) initRouter(g *gin.RouterGroup) {
 	g.GET("/traffic/:email", a.getTrafficByEmail)
 	g.GET("/subLinks/:subId", a.getSubLinks)
 	g.GET("/links/:email", a.getClientLinks)
+	g.GET("/vpnConfigs/:email", a.getVPNConfigs)
 	g.POST("/happLink/:id", a.generateHappLink)
 
 	g.POST("/add", a.create)
@@ -650,6 +652,18 @@ func (a *ClientController) getClientLinks(c *gin.Context) {
 		return
 	}
 	jsonObj(c, links, nil)
+}
+
+// getVPNConfigs returns OpenVPN .ovpn profiles and AnyConnect credentials
+// for one client. Neither protocol has a share-link URI form, so the client
+// dialog renders these instead of a link line.
+func (a *ClientController) getVPNConfigs(c *gin.Context) {
+	host := strings.TrimSpace(c.Query("host"))
+	if host == "" {
+		host = resolveHost(c)
+	}
+	svc := sub.NewSubService("").ForRequest(host)
+	jsonObj(c, svc.VPNConfigsForEmail(c.Param("email")), nil)
 }
 
 func (a *ClientController) generateHappLink(c *gin.Context) {

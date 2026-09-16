@@ -2946,6 +2946,7 @@ type PageData struct {
 	SubAnnounce   string
 	Result        []string
 	Emails        []string
+	VPNConfigs    []VPNClientConfig
 }
 
 // ResolveRequest extracts scheme and host info from request/headers consistently.
@@ -3122,6 +3123,7 @@ func (s *SubService) BuildPageData(subId string, hostHeader string, traffic xray
 		SubSupportUrl: subSupportUrl,
 		Result:        pageLinks,
 		Emails:        pageEmails,
+		VPNConfigs:    s.VPNConfigsForSubID(subId),
 	}
 }
 

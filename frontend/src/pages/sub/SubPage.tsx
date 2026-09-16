@@ -66,6 +66,34 @@ const subClashUrl = subData.subClashUrl || '';
 const subTitle = subData.subTitle || '';
 const links: string[] = Array.isArray(subData.links) ? subData.links : [];
 const linkEmails: string[] = Array.isArray(subData.emails) ? subData.emails : [];
+
+interface VpnConfig {
+  protocol: string;
+  remark: string;
+  server: string;
+  port: number;
+  email: string;
+  username: string;
+  password: string;
+  config?: string;
+}
+const vpnConfigs: VpnConfig[] = Array.isArray(subData.vpnConfigs)
+  ? (subData.vpnConfigs as VpnConfig[])
+  : [];
+
+const STORE_URLS = {
+  openvpnAndroid: 'https://play.google.com/store/apps/details?id=net.openvpn.openvpn',
+  openvpnIos: 'https://apps.apple.com/app/openvpn-connect/id590379981',
+  ciscoAndroid:
+    'https://play.google.com/store/apps/details?id=com.cisco.anyconnect.vpn.android.avf',
+  ciscoIos: 'https://apps.apple.com/app/cisco-secure-client/id1135064690',
+  wireguardAndroid: 'https://play.google.com/store/apps/details?id=com.wireguard.android',
+  wireguardIos: 'https://apps.apple.com/app/wireguard/id1441195209',
+} as const;
+
+function sanitizeFileName(value: string): string {
+  return value.replace(/[^a-zA-Z0-9-_]+/g, '_').slice(0, 80) || 'vpn';
+}
 const subEmail = [...new Set(linkEmails.filter(Boolean))].join(', ');
 const datepicker = subData.datepicker || 'gregorian';
 const announce = subData.announce || '';
@@ -219,6 +247,21 @@ export default function SubPage() {
       { key: 'android-npvtunnel', label: 'NPV Tunnel', onClick: () => copy(subUrl) },
       { key: 'android-happ', label: 'Happ', onClick: () => open(`happ://add/${subUrl}`) },
       { key: 'android-incy', label: 'Incy', onClick: () => open(`incy://add/${subUrl}`) },
+      {
+        key: 'android-openvpn',
+        label: 'OpenVPN Connect (Play Store)',
+        onClick: () => open(STORE_URLS.openvpnAndroid),
+      },
+      {
+        key: 'android-cisco',
+        label: 'Cisco Secure Client (Play Store)',
+        onClick: () => open(STORE_URLS.ciscoAndroid),
+      },
+      {
+        key: 'android-wireguard',
+        label: 'WireGuard (Play Store)',
+        onClick: () => open(STORE_URLS.wireguardAndroid),
+      },
     ],
     [copy, open],
   );
@@ -232,6 +275,21 @@ export default function SubPage() {
       { key: 'ios-npvtunnel', label: 'NPV Tunnel', onClick: () => copy(subUrl) },
       { key: 'ios-happ', label: 'Happ', onClick: () => open(happUrl) },
       { key: 'ios-incy', label: 'Incy', onClick: () => open(incyUrl) },
+      {
+        key: 'ios-openvpn',
+        label: 'OpenVPN Connect (App Store)',
+        onClick: () => open(STORE_URLS.openvpnIos),
+      },
+      {
+        key: 'ios-cisco',
+        label: 'Cisco Secure Client (App Store)',
+        onClick: () => open(STORE_URLS.ciscoIos),
+      },
+      {
+        key: 'ios-wireguard',
+        label: 'WireGuard (App Store)',
+        onClick: () => open(STORE_URLS.wireguardIos),
+      },
     ],
     [copy, open, shadowrocketUrl, v2boxUrl, streisandUrl, happUrl, incyUrl],
   );
@@ -606,6 +664,64 @@ export default function SubPage() {
                                 tagColor="purple"
                               />
                             )}
+                          </Fragment>
+                        );
+                      })}
+                    </div>
+                  </>
+                )}
+
+                {vpnConfigs.length > 0 && (
+                  <>
+                    <Divider>VPN configs</Divider>
+                    <div className="links-section">
+                      {vpnConfigs.map((vc, idx) => {
+                        const key = `${vc.protocol}-${vc.server}-${vc.port}-${vc.email}-${idx}`;
+                        const title = vc.remark || vc.email || vc.protocol;
+                        if (vc.protocol === 'openvpn' && vc.config) {
+                          return (
+                            <ConfigBlock
+                              key={key}
+                              label={`OpenVPN — ${title}`}
+                              text={vc.config}
+                              fileName={`${sanitizeFileName(title)}.ovpn`}
+                              showQr={false}
+                              tagColor="green"
+                            />
+                          );
+                        }
+                        const rows: [string, string][] = [
+                          ['Server', vc.server],
+                          ['Port', String(vc.port)],
+                          ['Username', vc.username],
+                          ['Password', vc.password],
+                        ];
+                        return (
+                          <Fragment key={key}>
+                            <div className="sub-link-row">
+                              <Tag color="blue" className="sub-link-tag">
+                                CISCO
+                              </Tag>
+                              <span className="sub-link-title" title={title}>
+                                {title}
+                              </span>
+                            </div>
+                            {rows.map(([label, value]) => (
+                              <div className="sub-link-row" key={`${key}-${label}`}>
+                                <span className="sub-link-title">
+                                  {label}: {value}
+                                </span>
+                                <div className="sub-link-actions">
+                                  <Button
+                                    size="small"
+                                    icon={<CopyOutlined />}
+                                    onClick={() => copy(value)}
+                                    aria-label={`Copy ${label}`}
+                                    title={t('copy')}
+                                  />
+                                </div>
+                              </div>
+                            ))}
                           </Fragment>
                         );
                       })}

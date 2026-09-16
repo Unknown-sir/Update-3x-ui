@@ -675,6 +675,7 @@ func (a *SUBController) subPageContext(page PageData) map[string]any {
 		"subSupportUrl": page.SubSupportUrl,
 		"links":         page.Result,
 		"emails":        page.Emails,
+		"vpnConfigs":    page.VPNConfigs,
 		"datepicker":    datepicker,
 		"announce":      page.SubAnnounce,
 	}

@@ -74,6 +74,21 @@ interface ApiMsg<T = unknown> {
   obj?: T;
 }
 
+interface VpnClientConfig {
+  protocol: string;
+  remark: string;
+  server: string;
+  port: number;
+  email: string;
+  username: string;
+  password: string;
+  config?: string;
+}
+
+function sanitizeVpnFileName(value: string): string {
+  return value.replace(/[^a-zA-Z0-9-_]+/g, '_').slice(0, 80) || 'vpn';
+}
+
 const DEFAULT_SUB: SubSettings = {
   enable: false,
   subURI: '',
@@ -112,6 +127,7 @@ export default function ClientInfoModal({
   const dateLabel = (ts?: number) => (!ts || ts <= 0 ? '-' : IntlUtil.formatDate(ts, datepicker));
   const [messageApi, messageContextHolder] = message.useMessage();
   const [links, setLinks] = useState<string[]>([]);
+  const [vpnConfigs, setVpnConfigs] = useState<VpnClientConfig[]>([]);
   const [clientIps, setClientIps] = useState<ClientIpInfo[]>([]);
   const [ipsLoading, setIpsLoading] = useState(false);
   const [ipsClearing, setIpsClearing] = useState(false);
@@ -138,6 +154,7 @@ export default function ClientInfoModal({
     setSyncedSubId(openSubId);
     if (openSubId === null) {
       setLinks([]);
+      setVpnConfigs([]);
       setClientIps([]);
       setIpsModalOpen(false);
       resetHwids();
@@ -159,6 +176,30 @@ export default function ClientInfoModal({
       cancelled = true;
     };
   }, [open, client?.subId]);
+
+  const subLinkForHost =
+    client?.subId && subSettings?.subURI ? subSettings.subURI + client.subId : '';
+  useEffect(() => {
+    if (!open || !client?.email) return;
+    let cancelled = false;
+    (async () => {
+      let host = window.location.hostname;
+      try {
+        const subHost = new URL(subLinkForHost, window.location.href).hostname;
+        if (subHost) host = subHost;
+      } catch {
+        // fall back to the panel host
+      }
+      const msg = (await HttpUtil.get(
+        `/panel/api/clients/vpnConfigs/${encodeURIComponent(client.email!)}?host=${encodeURIComponent(host)}`,
+      )) as ApiMsg<VpnClientConfig[]>;
+      if (cancelled) return;
+      setVpnConfigs(msg?.success && Array.isArray(msg.obj) ? msg.obj : []);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [open, client?.email, subLinkForHost]);
 
   const traffic = client?.traffic || null;
   const totalBytes = client?.totalGB || 0;
@@ -825,6 +866,58 @@ export default function ClientInfoModal({
                       qrRemark={meta.qrRemark}
                       tagColor="purple"
                     />
+                  );
+                })}
+              </>
+            )}
+
+            {vpnConfigs.length > 0 && client && (
+              <>
+                <Divider>VPN configs</Divider>
+                {vpnConfigs.map((vc, idx) => {
+                  const key = `${vc.protocol}-${vc.server}-${vc.port}-${vc.email}-${idx}`;
+                  const title = vc.remark || vc.email || vc.protocol;
+                  if (vc.protocol === 'openvpn' && vc.config) {
+                    return (
+                      <ConfigBlock
+                        key={key}
+                        label={`OpenVPN — ${title}`}
+                        text={vc.config}
+                        fileName={`${sanitizeVpnFileName(title)}.ovpn`}
+                        showQr={false}
+                        tagColor="green"
+                      />
+                    );
+                  }
+                  const rows: [string, string][] = [
+                    ['Server', vc.server],
+                    ['Port', String(vc.port)],
+                    ['Username', vc.username],
+                    ['Password', vc.password],
+                  ];
+                  return (
+                    <div key={key} style={{ marginBottom: 12 }}>
+                      <Tag color="blue" style={{ marginBottom: 6 }}>
+                        Cisco AnyConnect — {title}
+                      </Tag>
+                      {rows.map(([label, value]) => (
+                        <div
+                          key={`${key}-${label}`}
+                          style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}
+                        >
+                          <span style={{ minWidth: 76 }}>{label}:</span>
+                          <code style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                            {value}
+                          </code>
+                          <Button
+                            size="small"
+                            icon={<CopyOutlined />}
+                            aria-label={`Copy ${label}`}
+                            onClick={() => copyValue(value)}
+                          />
+                        </div>
+                      ))}
+                    </div>
                   );
                 })}
               </>

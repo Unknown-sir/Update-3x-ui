@@ -1584,6 +1584,18 @@ export const sections: readonly Section[] = [
       },
       {
         method: 'GET',
+        path: '/panel/api/clients/vpnConfigs/:email',
+        summary:
+          'OpenVPN .ovpn profiles and Cisco AnyConnect credentials for one client. Neither protocol has a share-link URI form, so the client dialog renders these instead of a link line. Optional ?host= overrides the address fallback.',
+        params: [
+          { name: 'email', in: 'path', type: 'string', desc: 'Client email (unique identifier).' },
+          { name: 'host', in: 'query', type: 'string', desc: 'Address fallback.', optional: true },
+        ],
+        response:
+          '{\n  "success": true,\n  "obj": [\n    { "protocol": "openvpn", "remark": "OpenVPN-1194", "server": "vpn.example.com", "port": 1194, "email": "user1", "username": "user1", "password": "s3cr3t", "config": "client\\ndev tun\\n..." }\n  ]\n}',
+      },
+      {
+        method: 'GET',
         path: '/panel/api/clients/links/:email',
         summary:
           'Return every URL for one client across all attached inbounds, one per advertised endpoint: the managed hosts of the inbound, else its streamSettings.externalProxy entries, else its own address. Supported protocols: vmess, vless, trojan, shadowsocks, hysteria, mtproto. Protocols without a URL form (socks, http, mixed, wireguard, dokodemo, tunnel) contribute nothing.',
