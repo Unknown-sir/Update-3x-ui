@@ -2,8 +2,11 @@ package controller
 
 import (
 	"strconv"
+	"strings"
+	"time"
 
 	"github.com/mhsanaei/3x-ui/v3/internal/database/model"
+	"github.com/mhsanaei/3x-ui/v3/internal/logger"
 	"github.com/mhsanaei/3x-ui/v3/internal/util/common"
 	"github.com/mhsanaei/3x-ui/v3/internal/web/service"
 	"github.com/mhsanaei/3x-ui/v3/internal/web/session"
@@ -163,18 +166,26 @@ func (a *ResellerController) login(c *gin.Context) {
 		jsonMsg(c, I18nWeb(c, "somethingWentWrong"), err)
 		return
 	}
+	body.Username = strings.TrimSpace(body.Username)
+	if body.Username == "" || body.Password == "" {
+		jsonMsg(c, I18nWeb(c, "somethingWentWrong"), common.NewError("username and password are required"))
+		return
+	}
 	remoteIP := getRemoteIp(c)
-	if _, ok := defaultLoginLimiter.allow(remoteIP, body.Username); !ok {
-		jsonMsg(c, I18nWeb(c, "pages.login.toasts.wrongUsernameOrPassword"), common.NewError("too many failed attempts"))
+	if blockedUntil, ok := defaultLoginLimiter.allow(remoteIP, body.Username); !ok {
+		logger.Warningf("reseller login blocked: username=%q, IP=%q, blocked_until=%s", body.Username, remoteIP, blockedUntil.Format(time.RFC3339))
+		jsonMsg(c, I18nWeb(c, "somethingWentWrong"), common.NewError("too many failed attempts, try again later"))
 		return
 	}
 	row, err := a.resellerService.CheckLogin(body.Username, body.Password)
 	if err != nil {
 		defaultLoginLimiter.registerFailure(remoteIP, body.Username)
+		logger.Warningf("reseller login failed: username=%q, IP=%q, reason=%q", body.Username, remoteIP, err.Error())
 		jsonMsg(c, I18nWeb(c, "somethingWentWrong"), err)
 		return
 	}
 	defaultLoginLimiter.registerSuccess(remoteIP, body.Username)
+	logger.Infof("reseller logged in successfully: username=%q, IP=%q", body.Username, remoteIP)
 	if err := session.SetResellerID(c, row.Id); err != nil {
 		jsonMsg(c, I18nWeb(c, "somethingWentWrong"), err)
 		return

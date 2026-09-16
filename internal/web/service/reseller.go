@@ -2,6 +2,7 @@ package service
 
 import (
 	"errors"
+	"strings"
 	"time"
 
 	"github.com/mhsanaei/3x-ui/v3/internal/database"
@@ -25,6 +26,7 @@ func (s *ResellerService) List() ([]model.Reseller, error) {
 }
 
 func (s *ResellerService) Create(r *model.Reseller) (*model.Reseller, error) {
+	r.Username = strings.TrimSpace(r.Username)
 	if r.Username == "" {
 		return nil, errors.New("username is required")
 	}
@@ -136,7 +138,7 @@ func (s *ResellerService) SetClientsEnabled(resellerID int, enable bool) error {
 func (s *ResellerService) CheckLogin(username, password string) (*model.Reseller, error) {
 	db := database.GetDB()
 	row := &model.Reseller{}
-	if err := db.Where("username = ?", username).First(row).Error; err != nil {
+	if err := db.Where("username = ?", strings.TrimSpace(username)).First(row).Error; err != nil {
 		return nil, errors.New("invalid credentials")
 	}
 	if !row.Enable {
