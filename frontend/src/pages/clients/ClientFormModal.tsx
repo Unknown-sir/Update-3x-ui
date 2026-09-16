@@ -63,6 +63,8 @@ const MULTI_CLIENT_PROTOCOLS = new Set([
   'mtproto',
   'amneziawg',
   'tuic',
+  'openvpn',
+  'cisco',
 ]);
 
 const CLIENT_FORM_MODAL_Z_INDEX = 1000;

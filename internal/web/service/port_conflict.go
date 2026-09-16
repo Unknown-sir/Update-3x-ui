@@ -80,6 +80,18 @@ func inboundTransports(protocol model.Protocol, streamSettings, settings string)
 				if udpOn, _ := st["udp"].(bool); udpOn {
 					bits |= transportUDP
 				}
+			case model.OpenVPN:
+				// L4 comes from settings.proto; default udp.
+				bits = 0
+				if p, _ := st["proto"].(string); strings.EqualFold(strings.TrimSpace(p), "tcp") {
+					bits |= transportTCP
+				} else {
+					bits |= transportUDP
+				}
+			case model.Cisco:
+				// ocserv serves TCP and UDP on the same port.
+				bits = 0
+				bits |= transportTCP | transportUDP
 			}
 		}
 	}

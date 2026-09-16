@@ -38,6 +38,8 @@ const MULTI_CLIENT_PROTOCOLS = new Set([
   'wireguard',
   'amneziawg',
   'tuic',
+  'openvpn',
+  'cisco',
 ]);
 
 const EMPTY: ClientBulkAddFormValues = {

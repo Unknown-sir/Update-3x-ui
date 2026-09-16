@@ -239,6 +239,8 @@ func (s *InboundService) buildTargetClientFromSource(source model.Client, target
 	case model.TUIC:
 		target.ID = uuid.NewString()
 		target.Password = s.generateRandomCredential(targetProtocol)
+	case model.OpenVPN, model.Cisco:
+		target.Password = s.generateRandomCredential(targetProtocol)
 	default:
 		target.ID = s.generateRandomCredential(targetProtocol)
 	}

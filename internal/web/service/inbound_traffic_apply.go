@@ -87,6 +87,14 @@ func (s *InboundService) applyTrafficMutationBatch(b *trafficMutationBatch) bool
 			s.applyLocalTuic(plan.inbound.Id)
 			continue
 		}
+		if plan.inbound.Protocol == model.OpenVPN {
+			s.applyLocalOpenvpn(plan.inbound.Id)
+			continue
+		}
+		if plan.inbound.Protocol == model.Cisco {
+			s.applyLocalCisco(plan.inbound.Id)
+			continue
+		}
 		rt, err := s.runtimeFor(&plan.inbound)
 		if err == nil {
 			switch plan.action {
