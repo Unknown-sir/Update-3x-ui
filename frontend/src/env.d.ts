@@ -17,6 +17,16 @@ interface SubPageData {
   subTitle?: string;
   links?: string[];
   emails?: string[];
+  vpnConfigs?: {
+    protocol: string;
+    remark: string;
+    server: string;
+    port: number;
+    email: string;
+    username: string;
+    password: string;
+    config?: string;
+  }[];
   datepicker?: 'gregorian' | 'jalalian';
   announce?: string;
   downloadByte?: string | number;
