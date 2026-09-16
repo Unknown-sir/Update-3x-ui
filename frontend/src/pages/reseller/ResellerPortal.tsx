@@ -1,4 +1,4 @@
-import { useState } from 'react';
+﻿import { useState } from 'react';
 import {
   Button,
   Card,
@@ -18,16 +18,13 @@ import {
 import { DeleteOutlined, EditOutlined, LogoutOutlined, PlusOutlined } from '@ant-design/icons';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import dayjs, { type Dayjs } from 'dayjs';
-
 function basePath(): string {
   const raw = (window as unknown as { X_UI_BASE_PATH?: string }).X_UI_BASE_PATH || '/';
   return raw.endsWith('/') ? raw : `${raw}/`;
 }
-
 function csrfToken(): string {
   return document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
 }
-
 async function api<T>(method: string, path: string, body?: unknown): Promise<T> {
   const res = await fetch(`${basePath()}panel/api/${path}`, {
     method,
@@ -45,7 +42,6 @@ async function api<T>(method: string, path: string, body?: unknown): Promise<T> 
   if (!msg?.success) throw new Error(msg?.msg || 'Request failed');
   return msg.obj as T;
 }
-
 interface PortalClient {
   email: string;
   totalGB?: number | null;
@@ -53,16 +49,13 @@ interface PortalClient {
   speedLimitMbps?: number | null;
   enable?: boolean | null;
 }
-
 interface PortalInbound {
   id: number;
   remark: string;
   protocol: string;
   port: number;
 }
-
 const GB = 1024 * 1024 * 1024;
-
 export default function ResellerPortal() {
   const queryClient = useQueryClient();
   const [modalOpen, setModalOpen] = useState(false);
@@ -70,7 +63,6 @@ export default function ResellerPortal() {
   const [loggedOut, setLoggedOut] = useState(false);
   const [form] = Form.useForm();
   const [loginForm] = Form.useForm();
-
   const clientsQuery = useQuery({
     queryKey: ['reseller', 'clients'],
     queryFn: () => api<PortalClient[]>('GET', 'resellers/myClients'),
@@ -83,15 +75,12 @@ export default function ResellerPortal() {
     retry: false,
     enabled: !clientsQuery.isError,
   });
-
   const authed = !clientsQuery.isError;
   const clients = Array.isArray(clientsQuery.data) ? clientsQuery.data : [];
   const inbounds = Array.isArray(inboundsQuery.data) ? inboundsQuery.data : [];
-
   const invalidate = () => {
     void queryClient.invalidateQueries({ queryKey: ['reseller'] });
   };
-
   const loginMutation = useMutation({
     mutationFn: (values: { username: string; password: string }) =>
       api('POST', 'resellers/login', values),
@@ -104,7 +93,6 @@ export default function ResellerPortal() {
     onError: (e: Error) =>
       message.error(e.message === 'auth' ? 'Invalid username or password' : e.message),
   });
-
   const saveMutation = useMutation({
     mutationFn: async (values: {
       email: string;
@@ -123,10 +111,17 @@ export default function ResellerPortal() {
         subId: '',
       };
       if (editing) {
-        return api('POST', `resellers/myClients/update/${encodeURIComponent(editing.email)}`, payload);
+        return api(
+          'POST',
+          `resellers/myClients/update/${encodeURIComponent(editing.email)}`,
+          payload,
+        );
       }
       if (!values.inboundIds?.length) throw new Error('Select at least one inbound');
-      return api('POST', 'resellers/myClients/add', { client: payload, inboundIds: values.inboundIds });
+      return api('POST', 'resellers/myClients/add', {
+        client: payload,
+        inboundIds: values.inboundIds,
+      });
     },
     onSuccess: () => {
       message.success('Saved');
@@ -135,7 +130,6 @@ export default function ResellerPortal() {
     },
     onError: (e: Error) => message.error(e.message),
   });
-
   const toggleMutation = useMutation({
     mutationFn: (v: { row: PortalClient; enable: boolean }) =>
       api('POST', 'resellers/myClients/setEnable', { email: v.row.email, enable: v.enable }),
@@ -145,7 +139,6 @@ export default function ResellerPortal() {
     },
     onError: (e: Error) => message.error(e.message),
   });
-
   const delMutation = useMutation({
     mutationFn: (row: PortalClient) =>
       api('POST', `resellers/myClients/del/${encodeURIComponent(row.email)}`),
@@ -155,7 +148,6 @@ export default function ResellerPortal() {
     },
     onError: (e: Error) => message.error(e.message),
   });
-
   const doLogout = async () => {
     try {
       await fetch(`${basePath()}logout`, {
@@ -167,14 +159,12 @@ export default function ResellerPortal() {
       setLoggedOut(true);
     }
   };
-
   const openAdd = () => {
     setEditing(null);
     form.resetFields();
     form.setFieldsValue({ enable: true, totalGB: 0, speedLimitMbps: 0 });
     setModalOpen(true);
   };
-
   const openEdit = (row: PortalClient) => {
     setEditing(row);
     form.setFieldsValue({
@@ -187,50 +177,59 @@ export default function ResellerPortal() {
     });
     setModalOpen(true);
   };
-
   if (clientsQuery.isPending) {
     return (
       <div style={{ display: 'flex', justifyContent: 'center', paddingTop: 120 }}>
-        <Spin size="large" />
+        {' '}
+        <Spin size="large" />{' '}
       </div>
     );
   }
-
   if (!authed) {
     return (
       <div style={{ display: 'flex', justifyContent: 'center', paddingTop: 100 }}>
+        {' '}
         <Card title="Reseller login" style={{ width: 360 }}>
+          {' '}
           <Form form={loginForm} layout="vertical" onFinish={(v) => loginMutation.mutate(v)}>
+            {' '}
             <Form.Item name="username" label="Username" rules={[{ required: true }]}>
-              <Input autoComplete="username" />
-            </Form.Item>
+              {' '}
+              <Input autoComplete="username" />{' '}
+            </Form.Item>{' '}
             <Form.Item name="password" label="Password" rules={[{ required: true }]}>
-              <Input.Password autoComplete="current-password" />
-            </Form.Item>
+              {' '}
+              <Input.Password autoComplete="current-password" />{' '}
+            </Form.Item>{' '}
             <Button type="primary" htmlType="submit" block loading={loginMutation.isPending}>
-              Login
-            </Button>
-          </Form>
-        </Card>
+              {' '}
+              Login{' '}
+            </Button>{' '}
+          </Form>{' '}
+        </Card>{' '}
       </div>
     );
   }
-
   return (
     <div style={{ maxWidth: 1100, margin: '24px auto', padding: '0 16px' }}>
+      {' '}
       <Card
         title="My clients"
         extra={
           <Space>
+            {' '}
             <Button type="primary" icon={<PlusOutlined />} onClick={openAdd}>
-              Add client
-            </Button>
+              {' '}
+              Add client{' '}
+            </Button>{' '}
             <Button icon={<LogoutOutlined />} onClick={doLogout}>
-              Logout
-            </Button>
+              {' '}
+              Logout{' '}
+            </Button>{' '}
           </Space>
         }
       >
+        {' '}
         <Table<PortalClient>
           rowKey="email"
           loading={clientsQuery.isFetching}
@@ -240,16 +239,22 @@ export default function ResellerPortal() {
             { title: 'Email', dataIndex: 'email' },
             {
               title: 'Volume (GB)',
-              render: (_, r) => (!r.totalGB ? <Tag>∞</Tag> : <Tag>{(Number(r.totalGB) / GB).toFixed(1)}</Tag>),
+              render: (_, r) =>
+                !r.totalGB ? <Tag>ظêئ</Tag> : <Tag>{(Number(r.totalGB) / GB).toFixed(1)}</Tag>,
             },
             {
               title: 'Expiry',
               render: (_, r) =>
-                !r.expiryTime ? <Tag>∞</Tag> : <Tag>{dayjs(Number(r.expiryTime)).format('YYYY-MM-DD')}</Tag>,
+                !r.expiryTime ? (
+                  <Tag>ظêئ</Tag>
+                ) : (
+                  <Tag>{dayjs(Number(r.expiryTime)).format('YYYY-MM-DD')}</Tag>
+                ),
             },
             {
               title: 'Speed (Mbps)',
-              render: (_, r) => (!r.speedLimitMbps ? <Tag>∞</Tag> : <Tag>{r.speedLimitMbps}</Tag>),
+              render: (_, r) =>
+                !r.speedLimitMbps ? <Tag>ظêئ</Tag> : <Tag>{r.speedLimitMbps}</Tag>,
             },
             {
               title: 'Enabled',
@@ -265,7 +270,8 @@ export default function ResellerPortal() {
               title: 'Actions',
               render: (_, r) => (
                 <Space>
-                  <Button icon={<EditOutlined />} onClick={() => openEdit(r)} />
+                  {' '}
+                  <Button icon={<EditOutlined />} onClick={() => openEdit(r)} />{' '}
                   <Button
                     danger
                     icon={<DeleteOutlined />}
@@ -275,13 +281,13 @@ export default function ResellerPortal() {
                         onOk: () => delMutation.mutate(r),
                       })
                     }
-                  />
+                  />{' '}
                 </Space>
               ),
             },
           ]}
-        />
-      </Card>
+        />{' '}
+      </Card>{' '}
       <Modal
         title={editing ? `Edit ${editing.email}` : 'Add client'}
         open={modalOpen}
@@ -289,37 +295,45 @@ export default function ResellerPortal() {
         onOk={() => form.submit()}
         confirmLoading={saveMutation.isPending}
       >
+        {' '}
         <Form form={form} layout="vertical" onFinish={(v) => saveMutation.mutate(v)}>
+          {' '}
           {!editing && (
             <Form.Item name="email" label="Email" rules={[{ required: true }]}>
-              <Input />
+              {' '}
+              <Input />{' '}
             </Form.Item>
-          )}
+          )}{' '}
           {!editing && (
             <Form.Item name="inboundIds" label="Inbounds" rules={[{ required: true }]}>
+              {' '}
               <Select
                 mode="multiple"
                 options={inbounds.map((b) => ({
                   label: `${b.remark || b.protocol} :${b.port}`,
                   value: b.id,
                 }))}
-              />
+              />{' '}
             </Form.Item>
-          )}
+          )}{' '}
           <Form.Item name="totalGB" label="Volume (GB, 0 = unlimited)">
-            <InputNumber min={0} style={{ width: '100%' }} />
-          </Form.Item>
+            {' '}
+            <InputNumber min={0} style={{ width: '100%' }} />{' '}
+          </Form.Item>{' '}
           <Form.Item name="expiryDate" label="Expiry (empty = unlimited)">
-            <DatePicker style={{ width: '100%' }} />
-          </Form.Item>
+            {' '}
+            <DatePicker style={{ width: '100%' }} />{' '}
+          </Form.Item>{' '}
           <Form.Item name="speedLimitMbps" label="Speed (Mbps, 0 = reseller cap)">
-            <InputNumber min={0} style={{ width: '100%' }} />
-          </Form.Item>
+            {' '}
+            <InputNumber min={0} style={{ width: '100%' }} />{' '}
+          </Form.Item>{' '}
           <Form.Item name="enable" label="Enabled" valuePropName="checked">
-            <Switch />
-          </Form.Item>
-        </Form>
-      </Modal>
+            {' '}
+            <Switch />{' '}
+          </Form.Item>{' '}
+        </Form>{' '}
+      </Modal>{' '}
     </div>
   );
 }
