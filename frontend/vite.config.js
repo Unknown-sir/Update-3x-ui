@@ -98,6 +98,7 @@ function bypassMigratedRoute(req) {
 
   if (url.startsWith(basePath)) {
     const stripped = url.slice(basePath.length);
+    if (stripped === 'reseller' || stripped === 'reseller/') return '/reseller.html';
     for (const prefix of PANEL_API_PREFIXES) {
       if (prefix.endsWith('/')) {
         if (stripped.startsWith(prefix)) return undefined;
@@ -236,6 +237,7 @@ export default defineConfig({
         index: path.resolve(import.meta.dirname, 'index.html'),
         login: path.resolve(import.meta.dirname, 'login.html'),
         subpage: path.resolve(import.meta.dirname, 'subpage.html'),
+        reseller: path.resolve(import.meta.dirname, 'reseller.html'),
       },
       output: {
         manualChunks(id) {
@@ -286,7 +288,7 @@ export default defineConfig({
     port: 5173,
     strictPort: true,
     proxy: {
-      '^/(?:[^/]+/)?(login|logout|getTwoFactorEnable|csrf-token|panel|server)(?:/|$)': makeBackendProxy(BACKEND_TARGET),
+      '^/(?:[^/]+/)?(login|logout|getTwoFactorEnable|csrf-token|panel|server|reseller)(?:/|$)': makeBackendProxy(BACKEND_TARGET),
       '^/$': makeBackendProxy(BACKEND_TARGET),
       '^/[^/]+/$': makeBackendProxy(BACKEND_TARGET),
       '^/(?:[^/]+/)?ws$': {

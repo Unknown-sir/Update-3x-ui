@@ -1648,6 +1648,32 @@ export const sections: readonly Section[] = [
         summary: 'List clients owned by the logged-in reseller.',
       },
       {
+        method: 'GET',
+        path: '/panel/api/resellers/myInbounds',
+        summary:
+          'List enabled inbounds (id, remark, protocol, port — no settings) for the reseller portal inbound picker.',
+      },
+      {
+        method: 'POST',
+        path: '/panel/api/resellers/myClients/add',
+        summary:
+          'Reseller creates one of its own clients. Ownership is forced to the caller, the speed cap is clamped to the reseller cap, and creation is rejected while the reseller quota/expiry is exhausted.',
+        body: '{\n  "client": { "email": "user1", "totalGB": 10737418240 },\n  "inboundIds": [1]\n}',
+      },
+      {
+        method: 'POST',
+        path: '/panel/api/resellers/myClients/update/:email',
+        summary:
+          'Reseller edits one of its own clients (rejected for other resellers clients). Re-enabling is rejected while the reseller quota/expiry is exhausted.',
+        params: [{ name: 'email', in: 'path', type: 'string', desc: 'Client email.' }],
+      },
+      {
+        method: 'POST',
+        path: '/panel/api/resellers/myClients/del/:email',
+        summary: 'Reseller deletes one of its own clients.',
+        params: [{ name: 'email', in: 'path', type: 'string', desc: 'Client email.' }],
+      },
+      {
         method: 'POST',
         path: '/panel/api/resellers/myClients/setEnable',
         summary:

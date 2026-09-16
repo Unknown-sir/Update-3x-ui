@@ -41,6 +41,7 @@ func NewIndexController(g *gin.RouterGroup) *IndexController {
 // initRouter sets up the routes for index, login, logout, and two-factor authentication.
 func (a *IndexController) initRouter(g *gin.RouterGroup) {
 	g.GET("/", a.index)
+	g.GET("/reseller", a.resellerIndex)
 	g.GET("/csrf-token", a.csrfToken)
 
 	g.POST("/login", middleware.CSRFMiddleware(), a.login)
@@ -56,6 +57,13 @@ func (a *IndexController) index(c *gin.Context) {
 		return
 	}
 	serveDistPage(c, "login.html")
+}
+
+// resellerIndex serves the standalone reseller portal (own login page and
+// client manager). No admin session needed; the bundle authenticates
+// against /panel/api/resellers/login and only calls reseller-scoped APIs.
+func (a *IndexController) resellerIndex(c *gin.Context) {
+	serveDistPage(c, "reseller.html")
 }
 
 // login handles user authentication and session creation.

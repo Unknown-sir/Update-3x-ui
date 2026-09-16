@@ -10717,6 +10717,167 @@
         }
       }
     },
+    "/panel/api/resellers/myInbounds": {
+      "get": {
+        "tags": [
+          "Resellers"
+        ],
+        "summary": "List enabled inbounds (id, remark, protocol, port — no settings) for the reseller portal inbound picker.",
+        "operationId": "get_panel_api_resellers_myInbounds",
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "msg": {
+                      "type": "string"
+                    },
+                    "obj": {}
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/panel/api/resellers/myClients/add": {
+      "post": {
+        "tags": [
+          "Resellers"
+        ],
+        "summary": "Reseller creates one of its own clients. Ownership is forced to the caller, the speed cap is clamped to the reseller cap, and creation is rejected while the reseller quota/expiry is exhausted.",
+        "operationId": "post_panel_api_resellers_myClients_add",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              },
+              "example": {
+                "client": {
+                  "email": "user1",
+                  "totalGB": 10737418240
+                },
+                "inboundIds": [
+                  1
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "msg": {
+                      "type": "string"
+                    },
+                    "obj": {}
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/panel/api/resellers/myClients/update/{email}": {
+      "post": {
+        "tags": [
+          "Resellers"
+        ],
+        "summary": "Reseller edits one of its own clients (rejected for other resellers clients). Re-enabling is rejected while the reseller quota/expiry is exhausted.",
+        "operationId": "post_panel_api_resellers_myClients_update_email",
+        "parameters": [
+          {
+            "name": "email",
+            "in": "path",
+            "required": true,
+            "description": "Client email.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "msg": {
+                      "type": "string"
+                    },
+                    "obj": {}
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/panel/api/resellers/myClients/del/{email}": {
+      "post": {
+        "tags": [
+          "Resellers"
+        ],
+        "summary": "Reseller deletes one of its own clients.",
+        "operationId": "post_panel_api_resellers_myClients_del_email",
+        "parameters": [
+          {
+            "name": "email",
+            "in": "path",
+            "required": true,
+            "description": "Client email.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "msg": {
+                      "type": "string"
+                    },
+                    "obj": {}
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/panel/api/resellers/myClients/setEnable": {
       "post": {
         "tags": [

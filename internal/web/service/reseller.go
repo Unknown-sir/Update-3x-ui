@@ -89,6 +89,34 @@ func (s *ResellerService) UsageBytes(resellerID int) (int64, error) {
 	return agg.Up + agg.Down, nil
 }
 
+// Status loads the reseller row with its current usage and exhaustion flag.
+func (s *ResellerService) Status(resellerID int) (*model.Reseller, int64, bool, error) {
+	db := database.GetDB()
+	row := &model.Reseller{}
+	if err := db.First(row, resellerID).Error; err != nil {
+		return nil, 0, true, err
+	}
+	used, err := s.UsageBytes(resellerID)
+	if err != nil {
+		return nil, 0, true, err
+	}
+	return row, used, row.IsExhausted(used, time.Now().UnixMilli()), nil
+}
+
+// ClampSpeed caps a requested per-user limit to the reseller cap.
+// A reseller cap of 0 means unlimited and leaves the request untouched.
+func (s *ResellerService) ClampSpeed(resellerID int, want int) (int, error) {
+	db := database.GetDB()
+	row := &model.Reseller{}
+	if err := db.Select("speed_limit_mbps").First(row, resellerID).Error; err != nil {
+		return 0, err
+	}
+	if row.SpeedLimitMbps > 0 && (want <= 0 || want > row.SpeedLimitMbps) {
+		return row.SpeedLimitMbps, nil
+	}
+	return want, nil
+}
+
 // SetClientsEnabled flips enable on every owned client record + traffic row.
 func (s *ResellerService) SetClientsEnabled(resellerID int, enable bool) error {
 	db := database.GetDB()

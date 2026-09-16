@@ -47,6 +47,12 @@ func (a *APIController) checkAPIAuth(c *gin.Context) {
 		c.Next()
 		return
 	}
+	// The reseller login endpoint authenticates with username+password like
+	// /login, so it must stay reachable without an existing session.
+	if c.Request.Method == http.MethodPost && relAPIPath(c.FullPath()) == "/resellers/login" {
+		c.Next()
+		return
+	}
 	auth := c.GetHeader("Authorization")
 	if after, ok := strings.CutPrefix(auth, "Bearer "); ok {
 		tok := after
@@ -61,6 +67,19 @@ func (a *APIController) checkAPIAuth(c *gin.Context) {
 		}
 	}
 	if !session.IsLogin(c) {
+		// A reseller session may only touch its own scoped endpoints under
+		// /panel/api/resellers/; every admin route stays forbidden.
+		if session.GetResellerID(c) > 0 {
+			if rel := relAPIPath(c.FullPath()); strings.HasPrefix(rel, "/resellers/") {
+				c.Next()
+				return
+			}
+			c.AbortWithStatusJSON(http.StatusForbidden, gin.H{
+				"success": false,
+				"msg":     "reseller accounts can only manage their own clients",
+			})
+			return
+		}
 		// A presented Bearer token is not an anonymous scan: return 401 so
 		// callers can distinguish a bad/disabled token from a wrong base path
 		// (NoRoute still 404s). XHR keeps 401; bare unauthenticated stays 404.
