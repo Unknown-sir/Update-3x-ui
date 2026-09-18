@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"sort"
 	"sync"
+	"time"
 
 	"github.com/mhsanaei/3x-ui/v3/internal/logger"
 	"github.com/mhsanaei/3x-ui/v3/internal/vpnutil"
@@ -100,6 +101,26 @@ func (m *Manager) startLocked(inst Instance, structuralFP, usersFP string) error
 	if err := proc.Start(bin, serverConfPath(inst.Id)); err != nil {
 		return err
 	}
+	if inst.Proto == "tcp" {
+		if err := vpnutil.WaitTCPListening("openvpn", inst.Listen, inst.Port, 8*time.Second); err != nil {
+			proc.Stop()
+			if tail := proc.LastLog(); tail != "" {
+				return fmt.Errorf("%w; daemon log:\n%s", err, tail)
+			}
+			return err
+		}
+	} else {
+		deadline := time.Now().Add(4 * time.Second)
+		for proc.IsRunning() && time.Now().Before(deadline) {
+			time.Sleep(500 * time.Millisecond)
+		}
+		if !proc.IsRunning() {
+			if tail := proc.LastLog(); tail != "" {
+				return fmt.Errorf("openvpn exited during startup; daemon log:\n%s", tail)
+			}
+			return fmt.Errorf("openvpn exited during startup")
+		}
+	}
 	m.procs[inst.Id] = &managed{
 		proc: proc, tag: inst.Tag, dir: dir,
 		structuralFP: structuralFP, usersFP: usersFP,
@@ -107,6 +128,31 @@ func (m *Manager) startLocked(inst Instance, structuralFP, usersFP string) error
 	}
 	logger.Infof("openvpn: daemon started for inbound %d (%s) on %s", inst.Id, inst.Tag, inst.BindTo())
 	return nil
+}
+
+// SidecarStatus describes one supervised daemon for the status API.
+type SidecarStatus struct {
+	Id        int
+	Protocol  string
+	Tag       string
+	Running   bool
+	LastError string
+}
+
+// Status snapshots every tracked daemon plus recorded start failures.
+func (m *Manager) Status() []SidecarStatus {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	out := make([]SidecarStatus, 0, len(m.procs)+len(m.lastStart))
+	for id, mg := range m.procs {
+		running := mg.proc != nil && mg.proc.IsRunning()
+		errMsg := m.lastStart[id]
+		if running {
+			errMsg = ""
+		}
+		out = append(out, SidecarStatus{Id: id, Protocol: "openvpn", Tag: mg.tag, Running: running, LastError: errMsg})
+	}
+	return out
 }
 
 // CollectTraffic scrapes per-client deltas from each daemon status file and

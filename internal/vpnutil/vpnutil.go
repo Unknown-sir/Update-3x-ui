@@ -7,10 +7,12 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"net"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/mhsanaei/3x-ui/v3/internal/logger"
 )
@@ -71,6 +73,33 @@ func EnsureSelfSigned(dir, cn, certFile, keyFile string) error {
 	}
 	_ = os.Chmod(keyPath, 0o600)
 	return nil
+}
+
+// DialHost resolves the local address to probe for a daemon bound to listen.
+func DialHost(listen string) string {
+	if listen == "" || listen == "0.0.0.0" || listen == "::" {
+		return "127.0.0.1"
+	}
+	return listen
+}
+
+// WaitTCPListening polls a TCP accept on host:port until timeout, proving
+// the supervised daemon actually bound its port (a live process alone does
+// not prove that — a bad config can leave it running yet deaf).
+func WaitTCPListening(label, listen string, port int, timeout time.Duration) error {
+	deadline := time.Now().Add(timeout)
+	addr := net.JoinHostPort(DialHost(listen), fmt.Sprintf("%d", port))
+	var lastErr error
+	for time.Now().Before(deadline) {
+		conn, err := net.DialTimeout("tcp", addr, time.Second)
+		if err == nil {
+			_ = conn.Close()
+			return nil
+		}
+		lastErr = err
+		time.Sleep(500 * time.Millisecond)
+	}
+	return fmt.Errorf("%s: nothing listening on %s: %v", label, addr, lastErr)
 }
 
 // EnsureForwardingAndNAT enables IPv4 forwarding (runtime + persisted) and

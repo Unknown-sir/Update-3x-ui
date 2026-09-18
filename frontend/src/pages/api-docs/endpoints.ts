@@ -446,6 +446,14 @@ export const sections: readonly Section[] = [
       },
       {
         method: 'GET',
+        path: '/panel/api/server/vpnStatus',
+        summary:
+          'Supervised OpenVPN/ocserv daemons: per-inbound running flag plus the last start failure, if any.',
+        response:
+          '{\n  "success": true,\n  "obj": [\n    { "inboundId": 1, "protocol": "openvpn", "tag": "open-1194", "running": true }\n  ]\n}',
+      },
+      {
+        method: 'GET',
         path: '/panel/api/server/fail2banStatus',
         summary:
           'Reports whether per-client IP limits can be enforced on this host. The panel uses it to gate the "IP Limit" field, since enforcement depends on Fail2ban being installed.',

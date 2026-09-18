@@ -31,6 +31,17 @@ type Process struct {
 	cmd     *exec.Cmd
 	running bool
 	exited  chan struct{}
+	log     *procLogWriter
+}
+
+// LastLog returns the daemon's recent stderr output for diagnostics.
+func (p *Process) LastLog() string {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	if p.log == nil {
+		return ""
+	}
+	return p.log.LastLines()
 }
 
 // Start launches openvpn in the foreground on the given config.
@@ -44,8 +55,10 @@ func (p *Process) Start(bin, conf string) error {
 		return fmt.Errorf("openvpn binary not found")
 	}
 	cmd := exec.CommandContext(context.Background(), bin, "--config", conf)
-	cmd.Stdout = &procLogWriter{label: conf}
-	cmd.Stderr = &procLogWriter{label: conf}
+	w := &procLogWriter{label: conf}
+	cmd.Stdout = w
+	cmd.Stderr = w
+	p.log = w
 	if err := cmd.Start(); err != nil {
 		return err
 	}
@@ -109,6 +122,28 @@ type procLogWriter struct {
 	mu    sync.Mutex
 	label string
 	buf   string
+	lines []string
+}
+
+// LastLines returns the most recent captured log lines.
+func (w *procLogWriter) LastLines() string {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	if len(w.lines) > 20 {
+		return joinLines(w.lines[len(w.lines)-20:])
+	}
+	return joinLines(w.lines)
+}
+
+func joinLines(lines []string) string {
+	out := ""
+	for i, l := range lines {
+		if i > 0 {
+			out += "\n"
+		}
+		out += l
+	}
+	return out
 }
 
 func (w *procLogWriter) Write(p []byte) (int, error) {
@@ -124,6 +159,10 @@ func (w *procLogWriter) Write(p []byte) (int, error) {
 		w.buf = w.buf[i+1:]
 		if line != "" {
 			logger.Infof("openvpn %s | %s", filepath.Base(w.label), line)
+			w.lines = append(w.lines, line)
+			if len(w.lines) > 50 {
+				w.lines = w.lines[len(w.lines)-50:]
+			}
 		}
 	}
 	return len(p), nil

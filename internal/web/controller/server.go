@@ -5,11 +5,14 @@ import (
 	"net/http"
 	"regexp"
 	"slices"
+	"sort"
 	"strconv"
 	"time"
 
+	"github.com/mhsanaei/3x-ui/v3/internal/cisco"
 	"github.com/mhsanaei/3x-ui/v3/internal/database/model"
 	"github.com/mhsanaei/3x-ui/v3/internal/logger"
+	"github.com/mhsanaei/3x-ui/v3/internal/openvpn"
 	"github.com/mhsanaei/3x-ui/v3/internal/web/entity"
 	"github.com/mhsanaei/3x-ui/v3/internal/web/global"
 	"github.com/mhsanaei/3x-ui/v3/internal/web/service"
@@ -64,6 +67,7 @@ func (a *ServerController) initRouter(g *gin.RouterGroup) {
 	g.GET("/getNewVlessEnc", a.getNewVlessEnc)
 	g.GET("/clientIps", a.getClientIps)
 	g.GET("/fail2banStatus", a.getFail2banStatus)
+	g.GET("/vpnStatus", a.getVPNStatus)
 
 	g.POST("/stopXrayService", a.stopXrayService)
 	g.POST("/restartXrayService", a.restartXrayService)
@@ -110,6 +114,28 @@ func (a *ServerController) status(c *gin.Context) { jsonObj(c, a.serverService.L
 
 func (a *ServerController) getFail2banStatus(c *gin.Context) {
 	jsonObj(c, a.serverService.GetFail2banStatus(), nil)
+}
+
+type vpnSidecarStatus struct {
+	InboundID int    `json:"inboundId" example:"1"`
+	Protocol  string `json:"protocol" example:"openvpn"`
+	Tag       string `json:"tag" example:"open-1194"`
+	Running   bool   `json:"running" example:"true"`
+	LastError string `json:"lastError,omitempty"`
+}
+
+// getVPNStatus reports the supervised OpenVPN/ocserv daemons: whether each
+// tracked inbound is actually running, plus the last start failure.
+func (a *ServerController) getVPNStatus(c *gin.Context) {
+	out := []vpnSidecarStatus{}
+	for _, s := range openvpn.GetManager().Status() {
+		out = append(out, vpnSidecarStatus{InboundID: s.Id, Protocol: s.Protocol, Tag: s.Tag, Running: s.Running, LastError: s.LastError})
+	}
+	for _, s := range cisco.GetManager().Status() {
+		out = append(out, vpnSidecarStatus{InboundID: s.Id, Protocol: s.Protocol, Tag: s.Tag, Running: s.Running, LastError: s.LastError})
+	}
+	sort.Slice(out, func(i, j int) bool { return out[i].InboundID < out[j].InboundID })
+	jsonObj(c, out, nil)
 }
 
 func parseHistoryBucket(c *gin.Context) (int, bool) {

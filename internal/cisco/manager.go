@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"sort"
 	"sync"
+	"time"
 
 	"github.com/mhsanaei/3x-ui/v3/internal/logger"
 	"github.com/mhsanaei/3x-ui/v3/internal/vpnutil"
@@ -105,6 +106,13 @@ func (m *Manager) startLocked(inst Instance, structuralFP, usersFP string) error
 	if err := proc.Start(bin, confPath(inst.Id)); err != nil {
 		return err
 	}
+	if err := vpnutil.WaitTCPListening("ocserv", inst.Listen, inst.Port, 8*time.Second); err != nil {
+		proc.Stop()
+		if tail := proc.LastLog(); tail != "" {
+			return fmt.Errorf("%w; daemon log:\n%s", err, tail)
+		}
+		return err
+	}
 	m.procs[inst.Id] = &managed{
 		proc: proc, tag: inst.Tag,
 		structuralFP: structuralFP, usersFP: usersFP,
@@ -112,6 +120,31 @@ func (m *Manager) startLocked(inst Instance, structuralFP, usersFP string) error
 	}
 	logger.Infof("cisco: ocserv started for inbound %d (%s) on %s", inst.Id, inst.Tag, inst.BindTo())
 	return nil
+}
+
+// SidecarStatus describes one supervised daemon for the status API.
+type SidecarStatus struct {
+	Id        int
+	Protocol  string
+	Tag       string
+	Running   bool
+	LastError string
+}
+
+// Status snapshots every tracked daemon plus recorded start failures.
+func (m *Manager) Status() []SidecarStatus {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	out := make([]SidecarStatus, 0, len(m.procs)+len(m.lastStart))
+	for id, mg := range m.procs {
+		running := mg.proc != nil && mg.proc.IsRunning()
+		errMsg := m.lastStart[id]
+		if running {
+			errMsg = ""
+		}
+		out = append(out, SidecarStatus{Id: id, Protocol: "cisco", Tag: mg.tag, Running: running, LastError: errMsg})
+	}
+	return out
 }
 
 // CollectTraffic scrapes per-user deltas via occtl and reports online users.
