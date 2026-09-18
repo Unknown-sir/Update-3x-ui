@@ -12,8 +12,10 @@ import (
 )
 
 // InstanceDir is the on-disk home of one inbound's ocserv configs and logs.
+// It lives next to the database (not under bin/) so panel updates, which
+// replace bin/, never wipe passwords and certificates.
 func InstanceDir(id int) string {
-	return filepath.Join(config.GetBinFolderPath(), "cisco", fmt.Sprintf("cisco-%d", id))
+	return filepath.Join(config.GetDBFolderPath(), "cisco", fmt.Sprintf("cisco-%d", id))
 }
 
 func confPath(id int) string   { return filepath.Join(InstanceDir(id), "ocserv.conf") }

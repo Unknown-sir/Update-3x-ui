@@ -11,8 +11,10 @@ import (
 )
 
 // InstanceDir is the on-disk home of one inbound's PKI, configs and logs.
+// It lives next to the database (not under bin/) so panel updates, which
+// replace bin/, never wipe the CA and client certificates.
 func InstanceDir(id int) string {
-	return filepath.Join(config.GetBinFolderPath(), "openvpn", fmt.Sprintf("openvpn-%d", id))
+	return filepath.Join(config.GetDBFolderPath(), "openvpn", fmt.Sprintf("openvpn-%d", id))
 }
 
 func serverConfPath(id int) string { return filepath.Join(InstanceDir(id), "server.conf") }

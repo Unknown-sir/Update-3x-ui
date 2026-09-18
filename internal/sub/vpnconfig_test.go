@@ -40,7 +40,7 @@ func seedVPNInbound(t *testing.T, protocol model.Protocol, settings string) *mod
 // seedClientPKI writes stub key material so profile embedding has files to read.
 func seedClientPKI(t *testing.T, id int, email string) {
 	t.Helper()
-	t.Setenv("XUI_BIN_FOLDER", t.TempDir())
+	t.Setenv("XUI_DB_FOLDER", t.TempDir())
 	caCrt, _ := openvpn.CABundle(id)
 	crt, key := openvpn.ClientCertPaths(id, email)
 	for _, p := range []string{caCrt, crt, key} {
