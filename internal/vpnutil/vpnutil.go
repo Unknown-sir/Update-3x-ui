@@ -89,9 +89,12 @@ func DialHost(listen string) string {
 func WaitTCPListening(label, listen string, port int, timeout time.Duration) error {
 	deadline := time.Now().Add(timeout)
 	addr := net.JoinHostPort(DialHost(listen), fmt.Sprintf("%d", port))
+	dialer := &net.Dialer{Timeout: time.Second}
 	var lastErr error
 	for time.Now().Before(deadline) {
-		conn, err := net.DialTimeout("tcp", addr, time.Second)
+		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+		conn, err := dialer.DialContext(ctx, "tcp", addr)
+		cancel()
 		if err == nil {
 			_ = conn.Close()
 			return nil
@@ -99,7 +102,7 @@ func WaitTCPListening(label, listen string, port int, timeout time.Duration) err
 		lastErr = err
 		time.Sleep(500 * time.Millisecond)
 	}
-	return fmt.Errorf("%s: nothing listening on %s: %v", label, addr, lastErr)
+	return fmt.Errorf("%s: nothing listening on %s: %w", label, addr, lastErr)
 }
 
 // EnsureForwardingAndNAT enables IPv4 forwarding (runtime + persisted) and
