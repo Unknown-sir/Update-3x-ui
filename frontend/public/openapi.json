@@ -5823,6 +5823,47 @@
         }
       }
     },
+    "/panel/api/server/vpnStatus": {
+      "get": {
+        "tags": [
+          "Server"
+        ],
+        "summary": "Supervised OpenVPN/ocserv daemons: per-inbound running flag plus the last start failure, if any.",
+        "operationId": "get_panel_api_server_vpnStatus",
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "msg": {
+                      "type": "string"
+                    },
+                    "obj": {}
+                  }
+                },
+                "example": {
+                  "success": true,
+                  "obj": [
+                    {
+                      "inboundId": 1,
+                      "protocol": "openvpn",
+                      "tag": "open-1194",
+                      "running": true
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/panel/api/server/fail2banStatus": {
       "get": {
         "tags": [
