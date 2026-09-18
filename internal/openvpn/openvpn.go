@@ -1,14 +1,17 @@
-// Package openvpn manages OpenVPN inbounds as a sidecar process.
-// One openvpn process per inbound, config regenerated from the panel DB.
+// Package openvpn manages OpenVPN inbounds as supervised sidecar processes.
+// One openvpn process per inbound: the panel owns a private PKI per inbound,
+// issues a client certificate per user (no passwords involved), writes
+// server.conf plus per-client CCD entries, and restarts the daemon when the
+// desired state changes. Traffic comes from the daemon status file.
 package openvpn
 
 import (
 	"encoding/json"
 	"fmt"
 	"net"
+	"sort"
 	"strconv"
 	"strings"
-	"sync"
 
 	"github.com/mhsanaei/3x-ui/v3/internal/database/model"
 )
@@ -25,6 +28,7 @@ type Settings struct {
 	Netmask        string        `json:"netmask"`
 	Cipher         string        `json:"cipher"`
 	Auth           string        `json:"auth"`
+	DNS            []string      `json:"dns"`
 	Clients        []ClientEntry `json:"clients"`
 	SpeedLimitMbps int           `json:"speedLimitMbps"`
 }
@@ -37,6 +41,9 @@ type Instance struct {
 	Proto          string
 	Subnet         string
 	Netmask        string
+	Cipher         string
+	Auth           string
+	DNS            []string
 	Clients        []ClientEntry
 	SpeedLimitMbps int
 }
@@ -50,15 +57,32 @@ func (inst Instance) BindTo() string {
 }
 
 func (inst Instance) StructuralFingerprint() string {
-	return strings.Join([]string{inst.BindTo(), inst.Proto, inst.Subnet, inst.Netmask, strconv.Itoa(inst.SpeedLimitMbps)}, "|")
+	return strings.Join([]string{
+		inst.BindTo(), inst.Proto, inst.Subnet, inst.Netmask,
+		inst.Cipher, inst.Auth, strings.Join(inst.DNS, ","),
+		strconv.Itoa(inst.SpeedLimitMbps),
+	}, "|")
 }
 
 func (inst Instance) UsersFingerprint() string {
-	parts := make([]string, 0, len(inst.Clients))
+	emails := make([]string, 0, len(inst.Clients))
 	for _, c := range inst.Clients {
-		parts = append(parts, c.Email+"="+strconv.Itoa(c.SpeedLimitMbps))
+		emails = append(emails, c.Email)
 	}
-	return strings.Join(parts, ",")
+	sort.Strings(emails)
+	return strings.Join(emails, ",")
+}
+
+// SortedEmails returns client emails in stable CCD allocation order.
+func (inst Instance) SortedEmails() []string {
+	emails := make([]string, 0, len(inst.Clients))
+	for _, c := range inst.Clients {
+		if c.Email != "" {
+			emails = append(emails, c.Email)
+		}
+	}
+	sort.Strings(emails)
+	return emails
 }
 
 func InstanceFromInbound(ib *model.Inbound) (Instance, bool) {
@@ -67,13 +91,14 @@ func InstanceFromInbound(ib *model.Inbound) (Instance, bool) {
 	}
 	var s Settings
 	_ = json.Unmarshal([]byte(ib.Settings), &s)
-	proto := s.Proto
-	if proto == "" {
+	proto := strings.ToLower(strings.TrimSpace(s.Proto))
+	if proto != "tcp" {
 		proto = "udp"
 	}
 	inst := Instance{
 		Id: ib.Id, Tag: ib.Tag, Listen: ib.Listen, Port: ib.Port,
 		Proto: proto, Subnet: s.Subnet, Netmask: s.Netmask,
+		Cipher: s.Cipher, Auth: s.Auth, DNS: s.DNS,
 		SpeedLimitMbps: s.SpeedLimitMbps,
 	}
 	if inst.Subnet == "" {
@@ -81,6 +106,12 @@ func InstanceFromInbound(ib *model.Inbound) (Instance, bool) {
 	}
 	if inst.Netmask == "" {
 		inst.Netmask = "255.255.255.0"
+	}
+	if inst.Cipher == "" {
+		inst.Cipher = "AES-256-GCM"
+	}
+	if inst.Auth == "" {
+		inst.Auth = "SHA256"
 	}
 	for _, c := range s.Clients {
 		limit := c.SpeedLimitMbps
@@ -92,51 +123,38 @@ func InstanceFromInbound(ib *model.Inbound) (Instance, bool) {
 	return inst, true
 }
 
-// GenerateServerConf renders an openvpn server.conf.
-// Per-user speed cap maps to --shaper (bytes/sec) as a default; per-user
-// overrides are pushed via client-connect scripts using the same value.
-func GenerateServerConf(inst Instance) string {
-	var b strings.Builder
-	fmt.Fprintf(&b, "port %d\nproto %s\ndev tun\n", inst.Port, inst.Proto)
-	fmt.Fprintf(&b, "server %s %s\n", inst.Subnet, inst.Netmask)
-	b.WriteString("topology subnet\nclient-to-client\nkeepalive 10 120\npersist-key\npersist-tun\nverb 3\n")
-	if inst.SpeedLimitMbps > 0 {
-		fmt.Fprintf(&b, "shaper %d\n", inst.SpeedLimitMbps*1024*1024/8)
+// ClientIP allocates a stable tunnel address per client: server takes .1,
+// clients take .2 and up in sorted-email order.
+func (inst Instance) ClientIP(email string) string {
+	base := net.ParseIP(inst.Subnet).To4()
+	if base == nil {
+		return ""
 	}
-	return b.String()
+	idx := -1
+	for i, e := range inst.SortedEmails() {
+		if e == email {
+			idx = i
+			break
+		}
+	}
+	if idx < 0 {
+		return ""
+	}
+	ip := make(net.IP, 4)
+	copy(ip, base)
+	v := uint32(base[0])<<24 | uint32(base[1])<<16 | uint32(base[2])<<8 | uint32(base[3])
+	v += uint32(idx + 2)
+	ip[0], ip[1], ip[2], ip[3] = byte(v>>24), byte(v>>16), byte(v>>8), byte(v)
+	return ip.String()
 }
 
-type Manager struct {
-	mu    sync.Mutex
-	confs map[int]Instance
-}
-
-var (
-	mgrOnce sync.Once
-	mgr     *Manager
-)
-
-func GetManager() *Manager {
-	mgrOnce.Do(func() { mgr = &Manager{confs: make(map[int]Instance)} })
-	return mgr
-}
-
-// Ensure records desired state; process supervision is done by the
-// reconcile job once openvpn binary is present via install.sh.
-func (m *Manager) Ensure(inst Instance) error {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-	m.confs[inst.Id] = inst
-	return nil
-}
-
-func (m *Manager) Remove(id int) {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-	delete(m.confs, id)
-}
-
-func (m *Manager) Reconcile() {
-	m.mu.Lock()
-	defer m.mu.Unlock()
+// SubnetCIDR renders the tunnel subnet in CIDR notation for NAT rules.
+func (inst Instance) SubnetCIDR() string {
+	ip := net.ParseIP(inst.Subnet).To4()
+	mask := net.IPMask(net.ParseIP(inst.Netmask).To4())
+	if ip == nil || mask == nil {
+		return ""
+	}
+	ones, _ := mask.Size()
+	return fmt.Sprintf("%s/%d", ip.Mask(mask).String(), ones)
 }

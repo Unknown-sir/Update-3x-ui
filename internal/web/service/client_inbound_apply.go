@@ -461,12 +461,18 @@ func (s *ClientService) AddInboundClient(inboundSvc *InboundService, data *model
 			if client.Email == "" {
 				return false, common.NewError("empty client email")
 			}
-		case "openvpn", "cisco":
+		case "openvpn":
+			// Certificate-authenticated: the panel issues a client
+			// certificate, no password involved.
+			if client.Email == "" {
+				return false, common.NewError("empty client email")
+			}
+		case "cisco":
 			if client.Email == "" {
 				return false, common.NewError("empty client email")
 			}
 			if client.Password == "" {
-				return false, common.NewError("openvpn/cisco client requires a password")
+				return false, common.NewError("cisco client requires a password")
 			}
 		default:
 			if client.ID == "" {

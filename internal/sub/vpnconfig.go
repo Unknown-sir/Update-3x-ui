@@ -4,10 +4,12 @@ import (
 	"encoding/json"
 	"fmt"
 	"maps"
+	"os"
 	"strings"
 
 	"github.com/mhsanaei/3x-ui/v3/internal/database"
 	"github.com/mhsanaei/3x-ui/v3/internal/database/model"
+	"github.com/mhsanaei/3x-ui/v3/internal/openvpn"
 )
 
 // VPNClientConfig is a downloadable/credential view of one OpenVPN or Cisco
@@ -119,7 +121,7 @@ func (s *SubService) collectVPNConfigs(inbounds []*model.Inbound, emails []strin
 					Password: client.Password,
 				}
 				if ib.Protocol == model.OpenVPN {
-					entry.Config = buildOpenVPNConfig(ep.server, ep.port, ib.Settings, ep.remark)
+					entry.Config = buildOpenVPNProfile(ib.Id, email, ep.server, ep.port, ib.Settings, ep.remark)
 				}
 				out = append(out, entry)
 			}
@@ -154,9 +156,24 @@ func (s *SubService) VPNConfigsForEmail(email string) []VPNClientConfig {
 	return s.collectVPNConfigs(inbounds, []string{email})
 }
 
-// buildOpenVPNConfig renders a standard client .ovpn profile. Credentials
-// stay out of the file on purpose: apps prompt for them via auth-user-pass.
-func buildOpenVPNConfig(server string, port int, settings, remark string) string {
+// buildOpenVPNProfile renders a passwordless client .ovpn profile: the
+// panel-issued client certificate authenticates, so importing the file is
+// enough to connect. Empty when any key material is missing.
+func buildOpenVPNProfile(id int, email, server string, port int, settings, remark string) string {
+	caCrt, taKey := openvpn.CABundle(id)
+	crt, key := openvpn.ClientCertPaths(id, email)
+	ca, err := os.ReadFile(caCrt)
+	if err != nil {
+		return ""
+	}
+	cert, err := os.ReadFile(crt)
+	if err != nil {
+		return ""
+	}
+	pkey, err := os.ReadFile(key)
+	if err != nil {
+		return ""
+	}
 	proto, cipher, auth := "udp", "AES-256-GCM", "SHA256"
 	if settings != "" {
 		var m map[string]any
@@ -185,11 +202,19 @@ nobind
 persist-key
 persist-tun
 remote-cert-tls server
-auth-user-pass
-auth-nocache
 cipher %s
 auth %s
 verb 3
-`, proto, server, port, cipher, auth)
+<ca>
+%s</ca>
+<cert>
+%s</cert>
+<key>
+%s</key>
+`, proto, server, port, cipher, auth,
+		strings.TrimSpace(string(ca)), strings.TrimSpace(string(cert)), strings.TrimSpace(string(pkey)))
+	if ta, err := os.ReadFile(taKey); err == nil && len(strings.TrimSpace(string(ta))) > 0 {
+		fmt.Fprintf(&b, "<tls-crypt>\n%s\n</tls-crypt>\n", strings.TrimSpace(string(ta)))
+	}
 	return b.String()
 }

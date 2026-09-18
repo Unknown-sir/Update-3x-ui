@@ -123,6 +123,16 @@ install_base() {
     esac
 }
 
+# The panel supervises its own per-inbound openvpn/ocserv sidecars, so the
+# distro system units must not grab the ports (or run stale sample configs).
+disable_conflicting_vpn_services() {
+    if command -v systemctl > /dev/null 2>&1; then
+        for svc in ocserv openvpn; do
+            systemctl disable --now "${svc}" > /dev/null 2>&1 || true
+        done
+    fi
+}
+
 # OpenVPN / Cisco (ocserv) daemons are managed by the panel as sidecars,
 # one process per inbound, same as tuic-server/mtg. The binaries only need
 # to exist; missing ones simply disable those protocols with a log line.
@@ -1867,4 +1877,5 @@ install_x-ui() {
 
 echo -e "${green}Running...${plain}"
 install_base
+disable_conflicting_vpn_services
 install_x-ui $1

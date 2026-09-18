@@ -1217,12 +1217,16 @@ func (s *InboundService) AddInbound(inbound *model.Inbound) (*model.Inbound, boo
 			if client.Email == "" {
 				return inbound, false, common.NewError("empty client email")
 			}
-		case "openvpn", "cisco":
+		case "openvpn":
+			if client.Email == "" {
+				return inbound, false, common.NewError("empty client email")
+			}
+		case "cisco":
 			if client.Email == "" {
 				return inbound, false, common.NewError("empty client email")
 			}
 			if client.Password == "" {
-				return inbound, false, common.NewError("openvpn/cisco client requires a password")
+				return inbound, false, common.NewError("cisco client requires a password")
 			}
 		default:
 			if client.ID == "" {
@@ -1687,13 +1691,20 @@ func (s *InboundService) UpdateInbound(inbound *model.Inbound) (*model.Inbound, 
 			}
 		}
 	}
-	if inbound.Protocol == model.OpenVPN || inbound.Protocol == model.Cisco {
+	if inbound.Protocol == model.OpenVPN {
+		for _, client := range clients {
+			if client.Email == "" {
+				return inbound, false, common.NewError("empty client email")
+			}
+		}
+	}
+	if inbound.Protocol == model.Cisco {
 		for _, client := range clients {
 			if client.Email == "" {
 				return inbound, false, common.NewError("empty client email")
 			}
 			if client.Password == "" {
-				return inbound, false, common.NewError("openvpn/cisco client requires a password")
+				return inbound, false, common.NewError("cisco client requires a password")
 			}
 		}
 	}

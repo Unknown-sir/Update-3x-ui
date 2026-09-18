@@ -92,6 +92,10 @@ bash <(curl -Ls https://raw.githubusercontent.com/Unknown-sir/Update-3x-ui/main/
 
 > This fork installs `openvpn` and `ocserv` (Cisco AnyConnect) alongside the
 > standard prerequisites, so the OpenVPN / Cisco inbound types work out of the box.
+> The panel supervises one daemon per inbound (matching tuic-server/mtg sidecars):
+> OpenVPN uses panel-issued client certificates — import the `.ovpn` file and
+> connect, no username/password — while Cisco uses per-user passwords with
+> optional per-user speed caps. IP forwarding and NAT are configured automatically.
 
 During installation a random username, password, and access path are generated. After installation, run `x-ui` to open the management menu, where you can start/stop the service, view or reset your login credentials, manage SSL certificates, and more.
 

@@ -1,11 +1,14 @@
 package sub
 
 import (
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
 	"github.com/mhsanaei/3x-ui/v3/internal/database"
 	"github.com/mhsanaei/3x-ui/v3/internal/database/model"
+	"github.com/mhsanaei/3x-ui/v3/internal/openvpn"
 )
 
 func seedVPNInbound(t *testing.T, protocol model.Protocol, settings string) *model.Inbound {
@@ -34,9 +37,26 @@ func seedVPNInbound(t *testing.T, protocol model.Protocol, settings string) *mod
 	return inbound
 }
 
+// seedClientPKI writes stub key material so profile embedding has files to read.
+func seedClientPKI(t *testing.T, id int, email string) {
+	t.Helper()
+	t.Setenv("XUI_BIN_FOLDER", t.TempDir())
+	caCrt, _ := openvpn.CABundle(id)
+	crt, key := openvpn.ClientCertPaths(id, email)
+	for _, p := range []string{caCrt, crt, key} {
+		if err := os.MkdirAll(filepath.Dir(p), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(p, []byte("stub-"+filepath.Base(p)), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+}
+
 func TestVPNConfigsForSubID(t *testing.T) {
 	initSubDB(t)
-	seedVPNInbound(t, model.OpenVPN, `{"proto":"udp","clients":[{"email":"u@vpn","password":"s3cr3t","enable":true}]}`)
+	ib := seedVPNInbound(t, model.OpenVPN, `{"proto":"udp","clients":[{"email":"u@vpn","password":"s3cr3t","enable":true}]}`)
+	seedClientPKI(t, ib.Id, "u@vpn")
 
 	got := NewSubService("").VPNConfigsForSubID("sub-vpn")
 	if len(got) != 1 {
@@ -49,10 +69,13 @@ func TestVPNConfigsForSubID(t *testing.T) {
 	if c.Username != "u@vpn" || c.Password != "s3cr3t" {
 		t.Fatalf("unexpected credentials: %+v", c)
 	}
-	for _, want := range []string{"remote vpn.example.com 1194", "proto udp", "auth-user-pass", "cipher AES-256-GCM"} {
+	for _, want := range []string{"remote vpn.example.com 1194", "proto udp", "cipher AES-256-GCM", "<ca>", "<cert>", "<key>"} {
 		if !strings.Contains(c.Config, want) {
 			t.Fatalf("ovpn config missing %q:\n%s", want, c.Config)
 		}
+	}
+	if strings.Contains(c.Config, "auth-user-pass") {
+		t.Fatalf("ovpn profile must be passwordless:\n%s", c.Config)
 	}
 }
 
@@ -60,6 +83,7 @@ func TestVPNConfigsUseAssignedHosts(t *testing.T) {
 	initSubDB(t)
 	db := database.GetDB()
 	ib := seedVPNInbound(t, model.OpenVPN, `{"proto":"udp","clients":[{"email":"u@vpn","password":"s3cr3t","enable":true}]}`)
+	seedClientPKI(t, ib.Id, "u@vpn")
 	if err := db.Create(&model.Host{
 		InboundId: ib.Id,
 		Remark:    "edge",
@@ -97,8 +121,11 @@ func TestVPNConfigsForEmailCisco(t *testing.T) {
 	}
 }
 
-func TestBuildOpenVPNConfigTCP(t *testing.T) {
-	got := buildOpenVPNConfig("vpn.example.com", 443, `{"proto":"tcp","cipher":"AES-128-GCM","auth":"SHA512"}`, "r")
+func TestBuildOpenVPNProfileTCP(t *testing.T) {
+	initSubDB(t)
+	seedClientPKI(t, 999, "u@vpn")
+	// Point the builder at the temp PKI by running under that bin folder id.
+	got := buildOpenVPNProfile(999, "u@vpn", "vpn.example.com", 443, `{"proto":"tcp","cipher":"AES-128-GCM","auth":"SHA512"}`, "r")
 	for _, want := range []string{"proto tcp", "remote vpn.example.com 443", "cipher AES-128-GCM", "auth SHA512"} {
 		if !strings.Contains(got, want) {
 			t.Fatalf("ovpn config missing %q:\n%s", want, got)

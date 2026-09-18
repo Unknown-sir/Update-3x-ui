@@ -299,6 +299,7 @@ const (
 	cadenceMtproto       = "@every 10s"
 	cadenceAmneziaWG     = "@every 10s"
 	cadenceTuic          = "@every 10s"
+	cadenceVpnSidecar    = "@every 10s"
 	cadenceClientIPScan  = "@every 10s"
 	cadenceNodeHeartbeat = "@every 5s"
 	cadenceNodeTraffic   = "@every 5s"
@@ -348,6 +349,16 @@ func (s *Server) startTask(restartXray bool, loc *time.Location) {
 	tuicJob := job.NewTuicJob()
 	_, _ = s.cron.AddJob(cadenceTuic, tuicJob)
 	go tuicJob.Run()
+
+	// Reconcile OpenVPN daemons and scrape their status-file traffic.
+	openvpnJob := job.NewOpenvpnJob()
+	_, _ = s.cron.AddJob(cadenceVpnSidecar, openvpnJob)
+	go openvpnJob.Run()
+
+	// Reconcile ocserv daemons and scrape their occtl traffic.
+	ciscoJob := job.NewCiscoJob()
+	_, _ = s.cron.AddJob(cadenceVpnSidecar, ciscoJob)
+	go ciscoJob.Run()
 
 	// Reseller volume/expiry enforcement every minute.
 	_, _ = s.cron.AddJob("@every 1m", job.NewResellerLimitJob())

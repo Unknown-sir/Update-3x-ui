@@ -1,13 +1,17 @@
-// Package cisco manages Cisco AnyConnect (ocserv) inbounds as sidecars.
+// Package cisco manages Cisco AnyConnect (ocserv) inbounds as supervised
+// sidecar processes. One ocserv daemon per inbound: the panel writes
+// ocserv.conf, maintains the plain password file, optionally writes per-user
+// bandwidth caps, and restarts the daemon when the desired state changes.
+// Traffic comes from occtl over the daemon control socket.
 package cisco
 
 import (
 	"encoding/json"
 	"fmt"
 	"net"
+	"sort"
 	"strconv"
 	"strings"
-	"sync"
 
 	"github.com/mhsanaei/3x-ui/v3/internal/database/model"
 )
@@ -34,6 +38,8 @@ type Instance struct {
 	Port           int
 	Auth           string
 	Subnet         string
+	Netmask        string
+	DNS            []string
 	Clients        []ClientEntry
 	SpeedLimitMbps int
 }
@@ -47,14 +53,18 @@ func (inst Instance) BindTo() string {
 }
 
 func (inst Instance) StructuralFingerprint() string {
-	return strings.Join([]string{inst.BindTo(), inst.Auth, inst.Subnet, strconv.Itoa(inst.SpeedLimitMbps)}, "|")
+	return strings.Join([]string{
+		inst.BindTo(), inst.Auth, inst.Subnet, inst.Netmask,
+		strings.Join(inst.DNS, ","), strconv.Itoa(inst.SpeedLimitMbps),
+	}, "|")
 }
 
 func (inst Instance) UsersFingerprint() string {
 	parts := make([]string, 0, len(inst.Clients))
 	for _, c := range inst.Clients {
-		parts = append(parts, c.Email+"="+strconv.Itoa(c.SpeedLimitMbps))
+		parts = append(parts, c.Email+"="+c.Password+"="+strconv.Itoa(c.SpeedLimitMbps))
 	}
+	sort.Strings(parts)
 	return strings.Join(parts, ",")
 }
 
@@ -64,16 +74,20 @@ func InstanceFromInbound(ib *model.Inbound) (Instance, bool) {
 	}
 	var s Settings
 	_ = json.Unmarshal([]byte(ib.Settings), &s)
-	auth := s.Auth
+	auth := strings.TrimSpace(s.Auth)
 	if auth == "" {
 		auth = "plain"
 	}
 	inst := Instance{
 		Id: ib.Id, Tag: ib.Tag, Listen: ib.Listen, Port: ib.Port,
-		Auth: auth, Subnet: s.Subnet, SpeedLimitMbps: s.SpeedLimitMbps,
+		Auth: auth, Subnet: s.Subnet, Netmask: s.Netmask, DNS: s.DNS,
+		SpeedLimitMbps: s.SpeedLimitMbps,
 	}
 	if inst.Subnet == "" {
-		inst.Subnet = "10.9.0.0/24"
+		inst.Subnet = "10.9.0.0"
+	}
+	if inst.Netmask == "" {
+		inst.Netmask = "255.255.255.0"
 	}
 	for _, c := range s.Clients {
 		limit := c.SpeedLimitMbps
@@ -85,50 +99,25 @@ func InstanceFromInbound(ib *model.Inbound) (Instance, bool) {
 	return inst, true
 }
 
-// GenerateOcservConf renders a minimal ocserv.conf.
-// Speed cap maps to rx/tx-data-per-sec (bytes/sec) defaults.
-func GenerateOcservConf(inst Instance) string {
-	var b strings.Builder
-	fmt.Fprintf(&b, "tcp-port = %d\nudp-port = %d\n", inst.Port, inst.Port)
-	fmt.Fprintf(&b, "auth = \"%s\"\n", inst.Auth)
-	fmt.Fprintf(&b, "ipv4-network = %s\n", inst.Subnet)
-	b.WriteString("tunnel-all-dns = true\ntry-mtu-discovery = true\n")
-	if inst.SpeedLimitMbps > 0 {
-		bps := inst.SpeedLimitMbps * 1024 * 1024 / 8
-		fmt.Fprintf(&b, "rx-data-per-sec = %d\ntx-data-per-sec = %d\n", bps, bps)
+// NetworkCIDR parses Subnet+Netmask into network address and mask size.
+func (inst Instance) NetworkCIDR() (network string, ones int, ok bool) {
+	ip := net.ParseIP(inst.Subnet).To4()
+	mask := net.IPMask(net.ParseIP(inst.Netmask).To4())
+	if ip == nil || mask == nil {
+		return "", 0, false
 	}
-	return b.String()
+	ones, bits := mask.Size()
+	if bits != 32 {
+		return "", 0, false
+	}
+	return ip.Mask(mask).String(), ones, true
 }
 
-type Manager struct {
-	mu    sync.Mutex
-	confs map[int]Instance
-}
-
-var (
-	mgrOnce sync.Once
-	mgr     *Manager
-)
-
-func GetManager() *Manager {
-	mgrOnce.Do(func() { mgr = &Manager{confs: make(map[int]Instance)} })
-	return mgr
-}
-
-func (m *Manager) Ensure(inst Instance) error {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-	m.confs[inst.Id] = inst
-	return nil
-}
-
-func (m *Manager) Remove(id int) {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-	delete(m.confs, id)
-}
-
-func (m *Manager) Reconcile() {
-	m.mu.Lock()
-	defer m.mu.Unlock()
+// SubnetCIDR renders the tunnel subnet in CIDR notation for NAT rules.
+func (inst Instance) SubnetCIDR() string {
+	network, ones, ok := inst.NetworkCIDR()
+	if !ok {
+		return ""
+	}
+	return fmt.Sprintf("%s/%d", network, ones)
 }
