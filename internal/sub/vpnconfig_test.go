@@ -77,6 +77,12 @@ func TestVPNConfigsForSubID(t *testing.T) {
 	if strings.Contains(c.Config, "auth-user-pass") {
 		t.Fatalf("ovpn profile must be passwordless:\n%s", c.Config)
 	}
+	// Inline blocks must close on their own line or apps reject the import.
+	for _, tag := range []string{"ca", "cert", "key"} {
+		if !strings.Contains(c.Config, "\n</"+tag+">") {
+			t.Fatalf("ovpn <%s> block is not closed on its own line:\n%s", tag, c.Config)
+		}
+	}
 }
 
 func TestVPNConfigsUseAssignedHosts(t *testing.T) {

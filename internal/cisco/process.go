@@ -47,7 +47,7 @@ type Process struct {
 }
 
 // Start launches ocserv in the foreground on the given config.
-func (p *Process) Start(bin, conf, pidFile string) error {
+func (p *Process) Start(bin, conf string) error {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 	if p.running {
@@ -56,8 +56,7 @@ func (p *Process) Start(bin, conf, pidFile string) error {
 	if bin == "" {
 		return fmt.Errorf("ocserv binary not found")
 	}
-	_ = os.Remove(pidFile)
-	cmd := exec.CommandContext(context.Background(), bin, "-f", "-c", conf, "--pid-file", pidFile)
+	cmd := exec.CommandContext(context.Background(), bin, "-f", "-c", conf)
 	cmd.Stdout = &procLogWriter{label: conf}
 	cmd.Stderr = &procLogWriter{label: conf}
 	if err := cmd.Start(); err != nil {

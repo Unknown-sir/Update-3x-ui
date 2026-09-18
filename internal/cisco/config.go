@@ -22,10 +22,10 @@ func confPath(id int) string   { return filepath.Join(InstanceDir(id), "ocserv.c
 func passwdPath(id int) string { return filepath.Join(InstanceDir(id), "ocpasswd") }
 func perUserDir(id int) string { return filepath.Join(InstanceDir(id), "per-user") }
 func socketPath(id int) string { return filepath.Join(InstanceDir(id), "ocserv.sock") }
-func pidPath(id int) string    { return filepath.Join(InstanceDir(id), "ocserv.pid") }
-func certPath(id int) string   { return filepath.Join(InstanceDir(id), "server.crt") }
-func keyPath(id int) string    { return filepath.Join(InstanceDir(id), "server.key") }
-func runDir(id int) string     { return filepath.Join(InstanceDir(id), "run") }
+
+func certPath(id int) string { return filepath.Join(InstanceDir(id), "server.crt") }
+func keyPath(id int) string  { return filepath.Join(InstanceDir(id), "server.key") }
+func runDir(id int) string   { return filepath.Join(InstanceDir(id), "run") }
 func perUserFile(id int, e string) string {
 	return filepath.Join(perUserDir(id), sanitizeUser(e))
 }
@@ -72,11 +72,12 @@ func RenderConf(inst Instance) string {
 	fmt.Fprintf(&b, "tcp-port = %d\n", inst.Port)
 	fmt.Fprintf(&b, "udp-port = %d\n", inst.Port)
 	fmt.Fprintf(&b, "auth = \"%s[passwd=%s]\"\n", inst.Auth, passwdPath(inst.Id))
-	network, ones, ok := inst.NetworkCIDR()
-	if !ok {
-		network, ones = "10.9.0.0", 24
+	network, mask := "10.9.0.0", "255.255.255.0"
+	if ip, m := inst.NetworkMask(); ip != "" {
+		network, mask = ip, m
 	}
-	fmt.Fprintf(&b, "ipv4-network = %s/%d\n", network, ones)
+	fmt.Fprintf(&b, "ipv4-network = %s\n", network)
+	fmt.Fprintf(&b, "ipv4-netmask = %s\n", mask)
 	for _, dns := range instanceDNS(inst) {
 		fmt.Fprintf(&b, "dns = %s\n", dns)
 	}
@@ -90,9 +91,7 @@ func RenderConf(inst Instance) string {
 	fmt.Fprintf(&b, "server-cert = %s\n", certPath(inst.Id))
 	fmt.Fprintf(&b, "server-key = %s\n", keyPath(inst.Id))
 	fmt.Fprintf(&b, "socket-dir = %s\n", runDir(inst.Id))
-	fmt.Fprintf(&b, "pid-file = %s\n", pidPath(inst.Id))
 	b.WriteString("run-as-user = root\nrun-as-group = root\n")
-	fmt.Fprintf(&b, "log-level = 2\n")
 	fmt.Fprintf(&b, "config-per-user = %s\n", perUserDir(inst.Id))
 	if inst.SpeedLimitMbps > 0 {
 		bps := speedlimit.BytesPerSec(inst.SpeedLimitMbps)

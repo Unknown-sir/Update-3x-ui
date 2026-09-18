@@ -206,11 +206,14 @@ cipher %s
 auth %s
 verb 3
 <ca>
-%s</ca>
+%s
+</ca>
 <cert>
-%s</cert>
+%s
+</cert>
 <key>
-%s</key>
+%s
+</key>
 `, proto, server, port, cipher, auth,
 		strings.TrimSpace(string(ca)), strings.TrimSpace(string(cert)), strings.TrimSpace(string(pkey)))
 	if ta, err := os.ReadFile(taKey); err == nil && len(strings.TrimSpace(string(ta))) > 0 {

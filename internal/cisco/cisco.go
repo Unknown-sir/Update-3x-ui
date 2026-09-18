@@ -113,6 +113,16 @@ func (inst Instance) NetworkCIDR() (network string, ones int, ok bool) {
 	return ip.Mask(mask).String(), ones, true
 }
 
+// NetworkMask returns the tunnel network address and dotted netmask.
+func (inst Instance) NetworkMask() (string, string) {
+	ip := net.ParseIP(inst.Subnet).To4()
+	mask := net.IPMask(net.ParseIP(inst.Netmask).To4())
+	if ip == nil || mask == nil {
+		return "", ""
+	}
+	return ip.Mask(mask).String(), net.IP(mask).String()
+}
+
 // SubnetCIDR renders the tunnel subnet in CIDR notation for NAT rules.
 func (inst Instance) SubnetCIDR() string {
 	network, ones, ok := inst.NetworkCIDR()

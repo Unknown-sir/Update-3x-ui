@@ -102,7 +102,7 @@ func (m *Manager) startLocked(inst Instance, structuralFP, usersFP string) error
 		vpnutil.EnsureForwardingAndNAT(cidr, "cisco")
 	}
 	proc := &Process{}
-	if err := proc.Start(bin, confPath(inst.Id), pidPath(inst.Id)); err != nil {
+	if err := proc.Start(bin, confPath(inst.Id)); err != nil {
 		return err
 	}
 	m.procs[inst.Id] = &managed{
