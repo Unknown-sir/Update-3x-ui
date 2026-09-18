@@ -5,6 +5,7 @@ package vpnutil
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"os"
 	"os/exec"
@@ -16,7 +17,7 @@ import (
 
 // Run executes a helper binary, returning combined output on failure.
 func Run(name string, args ...string) error {
-	cmd := exec.Command(name, args...)
+	cmd := exec.CommandContext(context.Background(), name, args...)
 	var buf bytes.Buffer
 	cmd.Stdout = &buf
 	cmd.Stderr = &buf
@@ -90,11 +91,11 @@ func EnsureForwardingAndNAT(subnet, label string) {
 	if _, err := exec.LookPath("iptables"); err != nil {
 		return
 	}
-	check := exec.Command("iptables", "-t", "nat", "-C", "POSTROUTING", "-s", subnet, "-j", "MASQUERADE")
+	check := exec.CommandContext(context.Background(), "iptables", "-t", "nat", "-C", "POSTROUTING", "-s", subnet, "-j", "MASQUERADE")
 	if check.Run() == nil {
 		return
 	}
-	add := exec.Command("iptables", "-t", "nat", "-A", "POSTROUTING", "-s", subnet, "-j", "MASQUERADE")
+	add := exec.CommandContext(context.Background(), "iptables", "-t", "nat", "-A", "POSTROUTING", "-s", subnet, "-j", "MASQUERADE")
 	if out, err := add.CombinedOutput(); err != nil {
 		logger.Warningf("%s: iptables MASQUERADE for %s failed: %v: %s", label, subnet, err, strings.TrimSpace(string(out)))
 	}

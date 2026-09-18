@@ -1,6 +1,7 @@
 package cisco
 
 import (
+	"context"
 	"encoding/json"
 	"os/exec"
 	"strconv"
@@ -23,7 +24,7 @@ func OcctlUsers(id int) (map[string][2]int64, []string) {
 	if occtl == "" {
 		return out, nil
 	}
-	cmd := exec.Command(occtl, "-s", socketPath(id), "-j", "show", "users")
+	cmd := exec.CommandContext(context.Background(), occtl, "-s", socketPath(id), "-j", "show", "users")
 	raw, err := cmd.Output()
 	if err != nil {
 		return out, nil

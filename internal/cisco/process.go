@@ -1,6 +1,7 @@
 package cisco
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"os/exec"
@@ -56,7 +57,7 @@ func (p *Process) Start(bin, conf, pidFile string) error {
 		return fmt.Errorf("ocserv binary not found")
 	}
 	_ = os.Remove(pidFile)
-	cmd := exec.Command(bin, "-f", "-c", conf, "--pid-file", pidFile)
+	cmd := exec.CommandContext(context.Background(), bin, "-f", "-c", conf, "--pid-file", pidFile)
 	cmd.Stdout = &procLogWriter{label: conf}
 	cmd.Stderr = &procLogWriter{label: conf}
 	if err := cmd.Start(); err != nil {

@@ -2,6 +2,7 @@ package cisco
 
 import (
 	"bufio"
+	"context"
 	"fmt"
 	"os"
 	"os/exec"
@@ -49,7 +50,7 @@ func SyncPasswords(id int, clients []ClientEntry) error {
 		want[c.Email] = c.Password
 	}
 	for email, password := range want {
-		cmd := exec.Command(helper, "-c", path, email)
+		cmd := exec.CommandContext(context.Background(), helper, "-c", path, email)
 		cmd.Stdin = strings.NewReader(password + "\n" + password + "\n")
 		if out, err := cmd.CombinedOutput(); err != nil {
 			return fmt.Errorf("ocpasswd %s: %w: %s", email, err, strings.TrimSpace(string(out)))

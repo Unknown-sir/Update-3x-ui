@@ -1,6 +1,7 @@
 package openvpn
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"os/exec"
@@ -54,7 +55,7 @@ func sanitizeCN(email string) string {
 }
 
 func runOutput(name string, args ...string) (string, error) {
-	out, err := exec.Command(name, args...).Output()
+	out, err := exec.CommandContext(context.Background(), name, args...).Output()
 	if err != nil {
 		return "", fmt.Errorf("%s: %w", name, err)
 	}

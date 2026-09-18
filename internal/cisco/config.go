@@ -21,7 +21,6 @@ func passwdPath(id int) string { return filepath.Join(InstanceDir(id), "ocpasswd
 func perUserDir(id int) string { return filepath.Join(InstanceDir(id), "per-user") }
 func socketPath(id int) string { return filepath.Join(InstanceDir(id), "ocserv.sock") }
 func pidPath(id int) string    { return filepath.Join(InstanceDir(id), "ocserv.pid") }
-func logPath(id int) string    { return filepath.Join(InstanceDir(id), "ocserv.log") }
 func certPath(id int) string   { return filepath.Join(InstanceDir(id), "server.crt") }
 func keyPath(id int) string    { return filepath.Join(InstanceDir(id), "server.key") }
 func runDir(id int) string     { return filepath.Join(InstanceDir(id), "run") }

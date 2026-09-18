@@ -1,6 +1,7 @@
 package openvpn
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"os/exec"
@@ -42,7 +43,7 @@ func (p *Process) Start(bin, conf string) error {
 	if bin == "" {
 		return fmt.Errorf("openvpn binary not found")
 	}
-	cmd := exec.Command(bin, "--config", conf)
+	cmd := exec.CommandContext(context.Background(), bin, "--config", conf)
 	cmd.Stdout = &procLogWriter{label: conf}
 	cmd.Stderr = &procLogWriter{label: conf}
 	if err := cmd.Start(); err != nil {
